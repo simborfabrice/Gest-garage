@@ -1,0 +1,6 @@
+{
+  "name": "AutoPro Garage - Gestion d'Atelier & Facturation",
+  "description": "Logiciel complet de gestion de garage automobile : agenda des rendez-vous atelier, clients et véhicules, fournisseurs, devis, bons de commande, factures, caisse journalière et comptabilité avec personnalisation intégrale des couleurs et logo.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+:root {
+  --primary-color: #0284c7;
+  --secondary-color: #f59e0b;
+  --app-bg: #f8fafc;
+  --sidebar-bg: #0f172a;
+  --sidebar-text: #f8fafc;
+  --header-bg: #ffffff;
+  --header-text: #0f172a;
+  --card-bg: #ffffff;
+  --card-border: #e2e8f0;
+  --text-primary: #0f172a;
+  --table-header-bg: #f1f5f9;
+  --document-color: #0f172a;
+}
+
+/* Application background patterns */
+.bg-pattern-subtle_grid {
+  background-image: radial-gradient(rgba(0, 0, 0, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.bg-pattern-dots_pattern {
+  background-image: radial-gradient(rgba(0, 0, 0, 0.12) 1.5px, transparent 1.5px);
+  background-size: 16px 16px;
+}
+
+.bg-pattern-carbon_pattern {
+  background-image: 
+    linear-gradient(27deg, rgba(0, 0, 0, 0.04) 5px, transparent 5px),
+    linear-gradient(207deg, rgba(0, 0, 0, 0.04) 5px, transparent 5px);
+  background-size: 20px 20px;
+}
+
+.bg-pattern-gradient_radial {
+  background-image: radial-gradient(circle at 50% 0%, rgba(2, 132, 199, 0.08), transparent 70%);
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  color: var(--text-primary);
+  background-color: var(--app-bg);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.card-theme {
+  background-color: var(--card-bg, #ffffff);
+  border-color: var(--card-border, #e2e8f0);
+}
+
+.table-header-theme {
+  background-color: var(--table-header-bg, #f1f5f9);
+}
+
+/* Print specific styles for Invoices, Quotes, and Cash receipts */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #printable-document,
+  #printable-document * {
+    visibility: visible;
+  }
+
+  #printable-document {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 20mm !important;
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
