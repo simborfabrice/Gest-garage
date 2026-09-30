@@ -63,17 +63,26 @@ body {
   }
 
   #printable-document,
-  #printable-document * {
+  #printable-document *,
+  #printable-receipt,
+  #printable-receipt *,
+  #printable-z,
+  #printable-z *,
+  #printable-daily-settlements,
+  #printable-daily-settlements * {
     visibility: visible;
   }
 
-  #printable-document {
+  #printable-document,
+  #printable-receipt,
+  #printable-z,
+  #printable-daily-settlements {
     position: absolute;
     left: 0;
     top: 0;
     width: 100% !important;
     margin: 0 !important;
-    padding: 20mm !important;
+    padding: 15mm !important;
     background: white !important;
     color: black !important;
     box-shadow: none !important;

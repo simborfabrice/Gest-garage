@@ -22,9 +22,16 @@ import {
   CheckSquare,
   Square,
   ShieldAlert,
+  Banknote,
+  FileSpreadsheet,
+  Download,
+  ArrowRightLeft,
+  Wallet,
+  FileText,
+  CheckCircle2,
 } from 'lucide-react';
 import { CashTransaction, CashDayClose } from '../../types';
-import { formatDate, formatDateLong, formatDateTime } from '../../utils/dateUtils';
+import { formatDate, formatDateLong, formatDateTime, formatDateFull } from '../../utils/dateUtils';
 
 export const CashRegisterTab: React.FC = () => {
   const {
@@ -52,6 +59,11 @@ export const CashRegisterTab: React.FC = () => {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [printedReceipt, setPrintedReceipt] = useState<CashTransaction | null>(null);
   const [printedZClose, setPrintedZClose] = useState<CashDayClose | null>(null);
+
+  // Détail des Règlements Journaliers
+  const [filterSettlementMethod, setFilterSettlementMethod] = useState<string>('all');
+  const [searchSettlementQuery, setSearchSettlementQuery] = useState('');
+  const [isDailySettlementsPrintOpen, setIsDailySettlementsPrintOpen] = useState(false);
 
   // Search, Filter & Batch Selection for transactions journal
   const [searchTxQuery, setSearchTxQuery] = useState('');
@@ -136,6 +148,51 @@ export const CashRegisterTab: React.FC = () => {
   const totalSalesTTC = todayTransactions
     .filter((tx) => tx.type === 'encaissement_facture' || tx.type === 'vente_directe')
     .reduce((sum, tx) => sum + tx.amount, 0);
+
+  // Règlements journaliers (chiffre d'affaires encaissé du jour)
+  const revenueSettlements = todayTransactions.filter(
+    (tx) => tx.type === 'encaissement_facture' || tx.type === 'vente_directe'
+  );
+
+  const cardSettlements = revenueSettlements.filter((tx) => tx.paymentMethod === 'carte');
+  const cashSettlements = revenueSettlements.filter((tx) => tx.paymentMethod === 'especes');
+  const chequeSettlements = revenueSettlements.filter((tx) => tx.paymentMethod === 'cheque');
+  const transferSettlements = revenueSettlements.filter((tx) => tx.paymentMethod === 'virement');
+
+  const totalCardSettlements = cardSettlements.reduce((sum, tx) => sum + tx.amount, 0);
+  const totalCashSettlements = cashSettlements.reduce((sum, tx) => sum + tx.amount, 0);
+  const totalChequeSettlements = chequeSettlements.reduce((sum, tx) => sum + tx.amount, 0);
+  const totalTransferSettlements = transferSettlements.reduce((sum, tx) => sum + tx.amount, 0);
+  const grandTotalSettlements = revenueSettlements.reduce((sum, tx) => sum + tx.amount, 0);
+
+  const handleExportSettlementsCSV = () => {
+    const headers = ['Date', 'Heure', 'Type', 'Mode de Règlement', 'Libellé', 'Client', 'Montant TTC (€)'];
+    const rows = revenueSettlements.map((tx) => [
+      formatDate(tx.date),
+      new Date(tx.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+      tx.type === 'encaissement_facture' ? 'Facture Atelier' : 'Vente Comptoir',
+      tx.paymentMethod === 'carte'
+        ? 'Carte Bancaire'
+        : tx.paymentMethod === 'especes'
+        ? 'Espèces'
+        : tx.paymentMethod === 'cheque'
+        ? 'Chèque'
+        : 'Virement',
+      `"${(tx.label || '').replace(/"/g, '""')}"`,
+      `"${(tx.clientName || '').replace(/"/g, '""')}"`,
+      tx.amount.toFixed(2),
+    ]);
+    const csvContent =
+      'data:text/csv;charset=utf-8,\uFEFF' +
+      [headers.join(';'), ...rows.map((r) => r.join(';'))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `reglements_journaliers_${todayDateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const cashChangeToReturn = Math.max(0, cashGiven - checkoutAmount);
 
@@ -336,7 +393,7 @@ export const CashRegisterTab: React.FC = () => {
             <span>Gestion de Caisse Journalière & Encaissements</span>
           </h2>
           <p className="text-xs text-slate-500">
-            Encaissement direct des factures d'atelier, ventes comptoir, gestion du tiroir-caisse et clôture Z.
+            Encaissement direct des factures d'atelier, ventes comptoir, suivi de caisse et détail des règlements journaliers.
           </p>
         </div>
 
@@ -379,14 +436,12 @@ export const CashRegisterTab: React.FC = () => {
           </button>
 
           <button
-            onClick={() => {
-              setActualCashCounted(currentCashInDrawer);
-              setIsCloseDayModalOpen(true);
-            }}
+            onClick={() => setIsDailySettlementsPrintOpen(true)}
             className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-xs transition-colors"
+            title="Consulter et imprimer le bordereau du détail des règlements de la journée"
           >
-            <FileCheck className="w-4 h-4" />
-            <span>Clôture Z de Caisse</span>
+            <Receipt className="w-4 h-4" />
+            <span>Détail des Règlements Journaliers</span>
           </button>
         </div>
       </div>
@@ -762,44 +817,324 @@ export const CashRegisterTab: React.FC = () => {
         </div>
       </div>
 
-      {/* Historical Day Closes Z */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-4">
-        <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-slate-600" />
-          <span>Historique des Clôtures Z de Caisse</span>
-        </h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {dayCloses.map((close) => (
-            <div
-              key={close.id}
-              className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2 text-xs"
-            >
-              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                <span className="font-bold text-slate-900 text-sm">
-                  Clôture Z du {formatDate(close.date)}
-                </span>
-                <button
-                  onClick={() => setPrintedZClose(close)}
-                  className="flex items-center gap-1 text-sky-600 hover:text-sky-700 font-semibold"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Imprimer le rapport Z</span>
-                </button>
+      {/* Détail des Règlements Journaliers */}
+      <div id="section-reglements-journaliers" className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-sky-50 text-sky-700">
+                <Receipt className="w-5 h-5" />
               </div>
-
-              <div className="grid grid-cols-2 gap-2 text-slate-600 pt-1">
-                <p>Chiffre d’affaires TTC : <strong className="text-slate-900">{close.totalSalesTTC.toFixed(2)} €</strong></p>
-                <p>Espèces en caisse : <strong className="text-slate-900">{close.actualCashCounted.toFixed(2)} €</strong></p>
-                <p>Cartes bancaires : <strong>{close.totalCard.toFixed(2)} €</strong></p>
-                <p>Écart de caisse : <strong className={close.discrepancy === 0 ? 'text-emerald-600' : 'text-rose-600'}>{close.discrepancy.toFixed(2)} €</strong></p>
-              </div>
-
-              <div className="text-[11px] text-slate-400 pt-1">
-                Clôturé par {close.closedBy}
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <span>Détail des Règlements Journaliers</span>
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                    {formatDateFull(todayDateStr)}
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Ventilation complète et pointage de tous les paiements clients enregistrés aujourd’hui.
+                </p>
               </div>
             </div>
-          ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleExportSettlementsCSV}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg transition-colors shadow-2xs"
+              title="Exporter le détail des règlements au format CSV (compatible Excel)"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+              <span>Exporter CSV</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsDailySettlementsPrintOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-all shadow-xs group"
+              title="Imprimer le bordereau officiel du détail des règlements du jour pour la comptabilité ou remise en banque"
+            >
+              <Printer className="w-4 h-4 text-slate-300 group-hover:text-white" />
+              <span>Imprimer le Bordereau</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Synthèse par mode de règlement */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+          {/* Cartes Bancaires */}
+          <div
+            onClick={() => setFilterSettlementMethod(filterSettlementMethod === 'carte' ? 'all' : 'carte')}
+            className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+              filterSettlementMethod === 'carte'
+                ? 'bg-blue-50/70 border-blue-400 ring-2 ring-blue-500/20 shadow-xs'
+                : 'bg-slate-50/70 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+            }`}
+          >
+            <div className="flex items-center justify-between text-blue-700 mb-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Cartes Bleues (CB)</span>
+              <CreditCard className="w-4 h-4" />
+            </div>
+            <p className="text-lg font-black font-mono text-slate-900 tabular-nums">
+              {totalCardSettlements.toFixed(2)} €
+            </p>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              {cardSettlements.length} règlement{cardSettlements.length > 1 ? 's' : ''}
+            </p>
+          </div>
+
+          {/* Espèces reçues */}
+          <div
+            onClick={() => setFilterSettlementMethod(filterSettlementMethod === 'especes' ? 'all' : 'especes')}
+            className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+              filterSettlementMethod === 'especes'
+                ? 'bg-emerald-50/70 border-emerald-400 ring-2 ring-emerald-500/20 shadow-xs'
+                : 'bg-slate-50/70 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+            }`}
+          >
+            <div className="flex items-center justify-between text-emerald-700 mb-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Espèces Reçues</span>
+              <Banknote className="w-4 h-4" />
+            </div>
+            <p className="text-lg font-black font-mono text-slate-900 tabular-nums">
+              {totalCashSettlements.toFixed(2)} €
+            </p>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              {cashSettlements.length} règlement{cashSettlements.length > 1 ? 's' : ''}
+            </p>
+          </div>
+
+          {/* Chèques */}
+          <div
+            onClick={() => setFilterSettlementMethod(filterSettlementMethod === 'cheque' ? 'all' : 'cheque')}
+            className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+              filterSettlementMethod === 'cheque'
+                ? 'bg-purple-50/70 border-purple-400 ring-2 ring-purple-500/20 shadow-xs'
+                : 'bg-slate-50/70 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+            }`}
+          >
+            <div className="flex items-center justify-between text-purple-700 mb-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Chèques</span>
+              <FileText className="w-4 h-4" />
+            </div>
+            <p className="text-lg font-black font-mono text-slate-900 tabular-nums">
+              {totalChequeSettlements.toFixed(2)} €
+            </p>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              {chequeSettlements.length} chèque{chequeSettlements.length > 1 ? 's' : ''}
+            </p>
+          </div>
+
+          {/* Virements */}
+          <div
+            onClick={() => setFilterSettlementMethod(filterSettlementMethod === 'virement' ? 'all' : 'virement')}
+            className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+              filterSettlementMethod === 'virement'
+                ? 'bg-amber-50/70 border-amber-400 ring-2 ring-amber-500/20 shadow-xs'
+                : 'bg-slate-50/70 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+            }`}
+          >
+            <div className="flex items-center justify-between text-amber-700 mb-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Virements</span>
+              <ArrowRightLeft className="w-4 h-4" />
+            </div>
+            <p className="text-lg font-black font-mono text-slate-900 tabular-nums">
+              {totalTransferSettlements.toFixed(2)} €
+            </p>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              {transferSettlements.length} virement{transferSettlements.length > 1 ? 's' : ''}
+            </p>
+          </div>
+
+          {/* Total Général Encaissé */}
+          <div className="col-span-2 sm:col-span-2 lg:col-span-1 p-3.5 rounded-xl border border-slate-900 bg-slate-900 text-white shadow-xs">
+            <div className="flex items-center justify-between text-slate-300 mb-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Total Encaissé</span>
+              <Wallet className="w-4 h-4 text-emerald-400" />
+            </div>
+            <p className="text-lg font-black font-mono text-white tabular-nums">
+              {grandTotalSettlements.toFixed(2)} €
+            </p>
+            <p className="text-[11px] text-slate-300 mt-0.5">
+              {revenueSettlements.length} règlement{revenueSettlements.length > 1 ? 's' : ''} TTC
+            </p>
+          </div>
+        </div>
+
+        {/* Barre de recherche et filtres rapides */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+          <div className="relative flex-1 sm:max-w-xs">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+            <input
+              type="text"
+              value={searchSettlementQuery}
+              onChange={(e) => setSearchSettlementQuery(e.target.value)}
+              placeholder="Filtrer client, réf facture, montant..."
+              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:border-sky-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5 overflow-x-auto">
+            {[
+              { id: 'all', label: 'Tous les règlements', count: revenueSettlements.length },
+              { id: 'carte', label: 'Cartes Bancaires', count: cardSettlements.length },
+              { id: 'especes', label: 'Espèces', count: cashSettlements.length },
+              { id: 'cheque', label: 'Chèques', count: chequeSettlements.length },
+              { id: 'virement', label: 'Virements', count: transferSettlements.length },
+            ].map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setFilterSettlementMethod(f.id)}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+                  filterSettlementMethod === f.id
+                    ? 'bg-slate-900 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <span>{f.label}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                    filterSettlementMethod === f.id ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {f.count}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tableau détaillé des règlements */}
+        <div className="overflow-x-auto rounded-lg border border-slate-200">
+          {(() => {
+            const filteredSettlements = revenueSettlements.filter((tx) => {
+              if (filterSettlementMethod !== 'all' && tx.paymentMethod !== filterSettlementMethod) {
+                return false;
+              }
+              if (!searchSettlementQuery) return true;
+              const q = searchSettlementQuery.toLowerCase();
+              return (
+                tx.label.toLowerCase().includes(q) ||
+                (tx.clientName && tx.clientName.toLowerCase().includes(q)) ||
+                (tx.notes && tx.notes.toLowerCase().includes(q)) ||
+                tx.amount.toString().includes(q)
+              );
+            });
+
+            return (
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase text-[11px]">
+                  <tr>
+                    <th className="py-2.5 px-3">Heure & Date</th>
+                    <th className="py-2.5 px-4">Mode de Règlement</th>
+                    <th className="py-2.5 px-4">Origine / Libellé</th>
+                    <th className="py-2.5 px-4">Client / Référence</th>
+                    <th className="py-2.5 px-4 text-right">Montant Encaissé</th>
+                    <th className="py-2.5 px-4 text-center">Ticket & Reçu</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredSettlements.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-slate-500">
+                        Aucun règlement enregistré pour cette sélection.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredSettlements.map((tx) => {
+                      const isCard = tx.paymentMethod === 'carte';
+                      const isCash = tx.paymentMethod === 'especes';
+                      const isCheque = tx.paymentMethod === 'cheque';
+                      const isTransfer = tx.paymentMethod === 'virement';
+
+                      return (
+                        <tr key={tx.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3 px-3 text-slate-500 font-mono text-[11px] tabular-nums whitespace-nowrap">
+                            <span className="block font-semibold text-slate-800">
+                              {new Date(tx.date).toLocaleTimeString('fr-FR', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                            <span className="text-[10px] text-slate-400">{formatDate(tx.date)}</span>
+                          </td>
+
+                          <td className="py-3 px-4">
+                            {isCard && (
+                              <span className="inline-flex items-center gap-1.5 text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-blue-200">
+                                <CreditCard className="w-3.5 h-3.5" />
+                                <span>Carte Bleue</span>
+                              </span>
+                            )}
+                            {isCash && (
+                              <span className="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-emerald-200">
+                                <Banknote className="w-3.5 h-3.5" />
+                                <span>Espèces</span>
+                              </span>
+                            )}
+                            {isCheque && (
+                              <span className="inline-flex items-center gap-1.5 text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-purple-200">
+                                <FileText className="w-3.5 h-3.5" />
+                                <span>Chèque</span>
+                              </span>
+                            )}
+                            {isTransfer && (
+                              <span className="inline-flex items-center gap-1.5 text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-amber-200">
+                                <ArrowRightLeft className="w-3.5 h-3.5" />
+                                <span>Virement</span>
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-4 font-semibold text-slate-800">
+                            {tx.label}
+                            {tx.type === 'encaissement_facture' ? (
+                              <span className="text-[10px] text-sky-700 font-medium block">
+                                Règlement Facture d'Atelier
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 font-normal block">
+                                Vente Directe Pièces & Comptoir
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-4 text-slate-600">
+                            {tx.clientName ? (
+                              <span className="font-medium text-slate-900">{tx.clientName}</span>
+                            ) : (
+                              <span className="text-slate-400 italic">Client Comptoir</span>
+                            )}
+                            {tx.notes && (
+                              <span className="text-[10px] text-slate-400 block">{tx.notes}</span>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-4 text-right font-mono font-black text-sm text-slate-900 tabular-nums">
+                            {tx.amount.toFixed(2)} €
+                          </td>
+
+                          <td className="py-3 px-4 text-center">
+                            <button
+                              type="button"
+                              onClick={() => setPrintedReceipt(tx)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 rounded-md transition-colors"
+                              title="Imprimer le ticket de reçu de ce règlement"
+                            >
+                              <Printer className="w-3.5 h-3.5 text-slate-500" />
+                              <span>Reçu</span>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            );
+          })()}
         </div>
       </div>
 
@@ -1549,6 +1884,209 @@ export const CashRegisterTab: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Bordereau & Détail des Règlements Journaliers (Imprimable) */}
+      {isDailySettlementsPrintOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto no-print">
+          <div className="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden my-8 p-6 text-xs space-y-5">
+            <div className="flex items-center justify-between no-print border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-sky-600" />
+                <h4 className="font-bold text-slate-900 text-sm">
+                  Bordereau & Détail des Règlements du Jour
+                </h4>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-lg font-semibold hover:bg-slate-800 transition-colors shadow-2xs"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Imprimer</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsDailySettlementsPrintOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 p-1"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Zone imprimable */}
+            <div id="printable-daily-settlements" className="space-y-5 text-slate-800">
+              {/* En-tête avec logo officiel sans contour ni fond */}
+              <div className="flex items-start justify-between border-b border-slate-300 pb-4">
+                <div className="flex items-center gap-3">
+                  {garage.logoUrl && (
+                    <img
+                      src={garage.logoUrl}
+                      alt={garage.name}
+                      className="object-contain bg-transparent"
+                      style={{
+                        height: '56px',
+                        maxWidth: '160px',
+                        border: 'none',
+                        outline: 'none',
+                        boxShadow: 'none',
+                        background: 'transparent',
+                      }}
+                    />
+                  )}
+                  <div>
+                    <h3 className="font-black text-slate-900 text-base">{garage.name}</h3>
+                    <p className="text-[11px] text-slate-500">{garage.address}, {garage.city}</p>
+                    <p className="text-[11px] text-slate-500">Tél : {garage.phone} · SIRET : {garage.siret}</p>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className="inline-block px-2.5 py-1 rounded bg-slate-100 font-bold text-slate-800 text-[11px] border border-slate-200">
+                    BORDEREAU JOURNALIER
+                  </span>
+                  <p className="text-[11px] text-slate-500 mt-1 font-semibold">
+                    {formatDateFull(todayDateStr)}
+                  </p>
+                  <p className="text-[10px] text-slate-400">
+                    Édité le {new Date().toLocaleDateString('fr-FR')} à{' '}
+                    {new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+              </div>
+
+              {/* Titre central */}
+              <div className="text-center py-1">
+                <h2 className="text-base font-black text-slate-900 tracking-tight uppercase">
+                  Détail & Récapitulatif des Règlements Journaliers
+                </h2>
+                <p className="text-[11px] text-slate-500">
+                  Justificatif de caisse et ventilation des encaissements par moyen de paiement
+                </p>
+              </div>
+
+              {/* Tableau récapitulatif par moyen de règlement */}
+              <div className="grid grid-cols-4 gap-2 text-center">
+                <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
+                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Carte Bleue</span>
+                  <span className="text-sm font-black font-mono text-slate-900 block mt-0.5">
+                    {totalCardSettlements.toFixed(2)} €
+                  </span>
+                  <span className="text-[10px] text-slate-400">{cardSettlements.length} op.</span>
+                </div>
+
+                <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
+                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Espèces</span>
+                  <span className="text-sm font-black font-mono text-slate-900 block mt-0.5">
+                    {totalCashSettlements.toFixed(2)} €
+                  </span>
+                  <span className="text-[10px] text-slate-400">{cashSettlements.length} op.</span>
+                </div>
+
+                <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
+                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Chèques</span>
+                  <span className="text-sm font-black font-mono text-slate-900 block mt-0.5">
+                    {totalChequeSettlements.toFixed(2)} €
+                  </span>
+                  <span className="text-[10px] text-slate-400">{chequeSettlements.length} op.</span>
+                </div>
+
+                <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
+                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Virements</span>
+                  <span className="text-sm font-black font-mono text-slate-900 block mt-0.5">
+                    {totalTransferSettlements.toFixed(2)} €
+                  </span>
+                  <span className="text-[10px] text-slate-400">{transferSettlements.length} op.</span>
+                </div>
+              </div>
+
+              {/* Grand Total Box */}
+              <div className="p-3 rounded-lg border-2 border-slate-900 bg-slate-900 text-white flex items-center justify-between">
+                <div>
+                  <span className="font-bold text-xs uppercase tracking-wide block">
+                    Total Général des Règlements Encaissés
+                  </span>
+                  <span className="text-[11px] text-slate-300">
+                    {revenueSettlements.length} opération{revenueSettlements.length > 1 ? 's' : ''} au total sur la journée
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-xl font-black font-mono tracking-tight tabular-nums">
+                    {grandTotalSettlements.toFixed(2)} € TTC
+                  </span>
+                </div>
+              </div>
+
+              {/* Tableau d'émargement et détail de chaque règlement */}
+              <div>
+                <h4 className="font-bold text-xs text-slate-900 mb-2 uppercase">
+                  Liste Détaillée des Encaissements
+                </h4>
+                <table className="w-full text-left text-xs border border-slate-200 border-collapse">
+                  <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px]">
+                    <tr>
+                      <th className="py-2 px-2.5 border-b border-slate-200">Heure</th>
+                      <th className="py-2 px-2.5 border-b border-slate-200">Mode</th>
+                      <th className="py-2 px-2.5 border-b border-slate-200">Libellé / Facture</th>
+                      <th className="py-2 px-2.5 border-b border-slate-200">Client</th>
+                      <th className="py-2 px-2.5 border-b border-slate-200 text-right">Montant TTC</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {revenueSettlements.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-4 text-center text-slate-400">
+                          Aucun règlement encaissé aujourd'hui.
+                        </td>
+                      </tr>
+                    ) : (
+                      revenueSettlements.map((tx) => (
+                        <tr key={tx.id}>
+                          <td className="py-2 px-2.5 font-mono text-[11px]">
+                            {new Date(tx.date).toLocaleTimeString('fr-FR', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </td>
+                          <td className="py-2 px-2.5 font-semibold text-[11px]">
+                            {tx.paymentMethod === 'carte'
+                              ? 'Carte Bleue'
+                              : tx.paymentMethod === 'especes'
+                              ? 'Espèces'
+                              : tx.paymentMethod === 'cheque'
+                              ? 'Chèque'
+                              : 'Virement'}
+                          </td>
+                          <td className="py-2 px-2.5 font-medium">{tx.label}</td>
+                          <td className="py-2 px-2.5 text-slate-600">{tx.clientName || 'Comptoir'}</td>
+                          <td className="py-2 px-2.5 text-right font-mono font-bold">
+                            {tx.amount.toFixed(2)} €
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Visa & Signature */}
+              <div className="grid grid-cols-2 gap-6 pt-4 border-t border-slate-200 text-xs">
+                <div>
+                  <p className="font-semibold text-slate-700">Responsable de caisse :</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    {cashSettings.defaultCashier || 'Fabrice (Gérant)'}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-semibold text-slate-700">Visa & Signature :</p>
+                  <div className="mt-8 border-b border-dashed border-slate-400 w-40 ml-auto"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

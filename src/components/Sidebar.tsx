@@ -53,7 +53,7 @@ export const Sidebar: React.FC = () => {
       id: 'cash',
       label: 'Caisse Journalière',
       icon: Coins,
-      description: 'Encaissements & clôture Z',
+      description: 'Détail des règlements & caisse',
     },
     {
       id: 'accounting',
