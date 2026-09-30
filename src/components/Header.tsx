@@ -60,11 +60,15 @@ export const Header: React.FC = () => {
             <img
               src={garage.logoUrl}
               alt="Logo garage"
-              className="object-contain rounded-lg border border-slate-200/80 p-1 group-hover:border-slate-400 group-hover:scale-105 transition-all bg-white shrink-0 shadow-xs"
+              className="object-contain shrink-0 bg-transparent transition-transform group-hover:scale-105"
               style={{
                 height: `${Math.min(Math.max((garage.logoSize || 140) * 0.46, 44), 62)}px`,
                 maxWidth: '200px',
                 width: 'auto',
+                border: 'none',
+                outline: 'none',
+                boxShadow: 'none',
+                background: 'transparent',
               }}
             />
           ) : (

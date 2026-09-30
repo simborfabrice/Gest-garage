@@ -10,7 +10,15 @@ import {
   CashTransaction,
   CashDayClose,
   CatalogItem,
+  CashRegisterSettings,
 } from '../types';
+
+export const DEFAULT_CASH_SETTINGS: CashRegisterSettings = {
+  initialOpeningBalance: 250.0,
+  defaultCashier: 'Fabrice (Gérant)',
+  enableLineDeletion: true,
+  confirmBeforeDelete: true,
+};
 
 export const DEFAULT_THEME: ThemeConfig = {
   primaryColor: '#0284c7', // Sky / Bleu Atelier Pro
@@ -933,6 +941,7 @@ const KEYS = {
   CASH_TRANSACTIONS: 'autopro_cash_transactions_v1',
   DAY_CLOSES: 'autopro_day_closes_v1',
   CATALOG_ITEMS: 'autopro_catalog_items_v1',
+  CASH_SETTINGS: 'autopro_cash_settings_v1',
 };
 
 // Generic storage accessors
@@ -1002,6 +1011,27 @@ export const storageService = {
   getDayCloses: (): CashDayClose[] =>
     loadItem<CashDayClose[]>(KEYS.DAY_CLOSES, INITIAL_DAY_CLOSES),
   saveDayCloses: (closes: CashDayClose[]) => saveItem(KEYS.DAY_CLOSES, closes),
+
+  getCashSettings: (): CashRegisterSettings => ({
+    ...DEFAULT_CASH_SETTINGS,
+    ...loadItem<CashRegisterSettings>(KEYS.CASH_SETTINGS, DEFAULT_CASH_SETTINGS),
+  }),
+  saveCashSettings: (settings: CashRegisterSettings) =>
+    saveItem(KEYS.CASH_SETTINGS, settings),
+
+  restoreDefaultCash: (): { transactions: CashTransaction[]; settings: CashRegisterSettings } => {
+    saveItem(KEYS.CASH_TRANSACTIONS, INITIAL_CASH_TRANSACTIONS);
+    saveItem(KEYS.CASH_SETTINGS, DEFAULT_CASH_SETTINGS);
+    return {
+      transactions: INITIAL_CASH_TRANSACTIONS,
+      settings: DEFAULT_CASH_SETTINGS,
+    };
+  },
+
+  restoreCashSettings: (): CashRegisterSettings => {
+    saveItem(KEYS.CASH_SETTINGS, DEFAULT_CASH_SETTINGS);
+    return DEFAULT_CASH_SETTINGS;
+  },
 
   // Reset to demo data
   resetAll: () => {

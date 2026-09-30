@@ -198,3 +198,10 @@ export interface CashDayClose {
   closedAt: string;
   notes?: string;
 }
+
+export interface CashRegisterSettings {
+  initialOpeningBalance: number; // Fond de caisse d'ouverture par défaut (ex: 250 €)
+  defaultCashier: string; // Nom du caissier / responsable (ex: 'Fabrice (Gérant)')
+  enableLineDeletion: boolean; // Option suppression de ligne activée
+  confirmBeforeDelete: boolean; // Demander confirmation avant suppression
+}

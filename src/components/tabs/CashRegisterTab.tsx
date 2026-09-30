@@ -14,6 +14,14 @@ import {
   Receipt,
   AlertCircle,
   Building,
+  Settings,
+  RotateCcw,
+  Check,
+  CheckCircle,
+  Search,
+  CheckSquare,
+  Square,
+  ShieldAlert,
 } from 'lucide-react';
 import { CashTransaction, CashDayClose } from '../../types';
 
@@ -22,6 +30,12 @@ export const CashRegisterTab: React.FC = () => {
     cashTransactions,
     addCashTransaction,
     deleteCashTransaction,
+    deleteCashTransactionsBatch,
+    restoreDefaultCash,
+    restoreCashSettings,
+    clearDayTransactions,
+    cashSettings,
+    updateCashSettings,
     dayCloses,
     addDayClose,
     documents,
@@ -34,13 +48,37 @@ export const CashRegisterTab: React.FC = () => {
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
   const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
   const [isCloseDayModalOpen, setIsCloseDayModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [printedReceipt, setPrintedReceipt] = useState<CashTransaction | null>(null);
   const [printedZClose, setPrintedZClose] = useState<CashDayClose | null>(null);
 
-  // Search & Filter for transactions journal
+  // Search, Filter & Batch Selection for transactions journal
   const [searchTxQuery, setSearchTxQuery] = useState('');
   const [filterTxType, setFilterTxType] = useState<string>('all');
   const [txFeedback, setTxFeedback] = useState<string | null>(null);
+  const [selectedTxIds, setSelectedTxIds] = useState<string[]>([]);
+
+  // Settings form states
+  const [settingsOpeningBalance, setSettingsOpeningBalance] = useState<number>(
+    cashSettings.initialOpeningBalance || 250
+  );
+  const [settingsCashier, setSettingsCashier] = useState<string>(
+    cashSettings.defaultCashier || 'Fabrice (Gérant)'
+  );
+  const [settingsEnableLineDeletion, setSettingsEnableLineDeletion] = useState<boolean>(
+    cashSettings.enableLineDeletion ?? true
+  );
+  const [settingsConfirmDelete, setSettingsConfirmDelete] = useState<boolean>(
+    cashSettings.confirmBeforeDelete ?? true
+  );
+
+  // Synchroniser les paramètres du modal avec cashSettings
+  React.useEffect(() => {
+    setSettingsOpeningBalance(cashSettings.initialOpeningBalance || 250);
+    setSettingsCashier(cashSettings.defaultCashier || 'Fabrice (Gérant)');
+    setSettingsEnableLineDeletion(cashSettings.enableLineDeletion ?? true);
+    setSettingsConfirmDelete(cashSettings.confirmBeforeDelete ?? true);
+  }, [cashSettings, isSettingsModalOpen]);
 
   // Quick Sale / Checkout Form
   const [checkoutType, setCheckoutType] = useState<'facture' | 'directe'>('facture');
@@ -173,6 +211,120 @@ export const CashRegisterTab: React.FC = () => {
     setPrintedZClose(newClose);
   };
 
+  // Handlers for Rétablissement et Paramètres de la Caisse Journalière
+  const handleRestoreSettingsOnly = () => {
+    if (
+      confirm(
+        'Rétablir uniquement les paramètres de la caisse journalière ?\n\n• Fond de caisse initial : 250,00 €\n• Option de suppression de ligne : Activée\n• Demande de confirmation avant suppression : Activée\n• Responsable de caisse : Fabrice (Gérant)\n\n(Vos opérations déjà saisies aujourd\'hui sont conservées).'
+      )
+    ) {
+      restoreCashSettings();
+      setSettingsOpeningBalance(250);
+      setSettingsCashier('Fabrice (Gérant)');
+      setSettingsEnableLineDeletion(true);
+      setSettingsConfirmDelete(true);
+      setTxFeedback('Paramètres de la caisse journalière rétablis avec succès ! Fond : 250,00 € · Option suppression de ligne activée.');
+      setTimeout(() => setTxFeedback(null), 4500);
+    }
+  };
+
+  const handleQuickRestoreDefault = () => {
+    if (
+      confirm(
+        'Rétablir tous les paramètres ET les opérations types de la caisse journalière ?\n\n• Fond de caisse d’ouverture (250,00 €) et opérations types réinitialisés\n• Option de suppression de ligne activée par défaut\n• Caisse remise à sa configuration de référence standard.'
+      )
+    ) {
+      restoreDefaultCash();
+      setSettingsOpeningBalance(250);
+      setSettingsCashier('Fabrice (Gérant)');
+      setSettingsEnableLineDeletion(true);
+      setSettingsConfirmDelete(true);
+      setTxFeedback('Paramètres et opérations de la caisse journalière rétablis avec succès ! Fond d’ouverture : 250,00 € · Option suppression activée.');
+      setSelectedTxIds([]);
+      setTimeout(() => setTxFeedback(null), 4500);
+    }
+  };
+
+  const handleDeleteSingle = (tx: CashTransaction) => {
+    if (cashSettings.enableLineDeletion === false) {
+      alert("L'option de suppression de ligne est actuellement désactivée dans les paramètres de la caisse journalière.\n\nPour supprimer des opérations, activez l'Option de suppression de ligne dans les Paramètres de Caisse.");
+      return;
+    }
+    if (cashSettings.confirmBeforeDelete ?? true) {
+      const ok = confirm(
+        `Confirmer la suppression de cette ligne d'opération de caisse ?\n\n• Libellé : « ${tx.label} »\n• Montant : ${tx.amount.toFixed(2)} € (${tx.paymentMethod})\n\nLe solde du tiroir-caisse et les recettes du jour seront automatiquement recalculés.`
+      );
+      if (!ok) return;
+    }
+    deleteCashTransaction(tx.id);
+    setSelectedTxIds((prev) => prev.filter((id) => id !== tx.id));
+    setTxFeedback(`Ligne « ${tx.label} » supprimée avec succès. Solde de caisse et totaux actualisés.`);
+    setTimeout(() => setTxFeedback(null), 3500);
+  };
+
+  const handleDeleteSelected = () => {
+    if (cashSettings.enableLineDeletion === false) {
+      alert("L'option de suppression de ligne est actuellement désactivée dans les paramètres de la caisse journalière.");
+      return;
+    }
+    if (selectedTxIds.length === 0) return;
+    if (cashSettings.confirmBeforeDelete ?? true) {
+      const ok = confirm(
+        `Confirmer la suppression définitive des ${selectedTxIds.length} opération(s) de caisse sélectionnée(s) ?\n\nLe solde du tiroir-caisse sera mis à jour en conséquence.`
+      );
+      if (!ok) return;
+    }
+    deleteCashTransactionsBatch(selectedTxIds);
+    setTxFeedback(`${selectedTxIds.length} ligne(s) d'opération supprimée(s). Solde de caisse actualisé.`);
+    setSelectedTxIds([]);
+    setTimeout(() => setTxFeedback(null), 3500);
+  };
+
+  const handleSaveCashSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    const newBal = Number(settingsOpeningBalance) || 250;
+    updateCashSettings({
+      initialOpeningBalance: newBal,
+      defaultCashier: settingsCashier,
+      enableLineDeletion: settingsEnableLineDeletion,
+      confirmBeforeDelete: settingsConfirmDelete,
+    });
+
+    // Check if an opening transaction already exists for today
+    const openingTx = todayTransactions.find(
+      (tx) => tx.type === 'apport_caisse' && tx.label.toLowerCase().includes('ouverture')
+    );
+    if (openingTx) {
+      deleteCashTransaction(openingTx.id);
+    }
+    // Add adjusted opening transaction
+    addCashTransaction({
+      type: 'apport_caisse',
+      label: 'Fond de caisse initial (Ouverture)',
+      amount: newBal,
+      paymentMethod: 'especes',
+      notes: 'Fond de caisse d’ouverture ajusté dans les paramètres',
+    });
+
+    setIsSettingsModalOpen(false);
+    setTxFeedback(`Paramètres de caisse enregistrés. Fond : ${newBal.toFixed(2)} € | Suppression de ligne : ${settingsEnableLineDeletion ? 'Activée' : 'Désactivée'}.`);
+    setTimeout(() => setTxFeedback(null), 3500);
+  };
+
+  const handleClearDay = () => {
+    if (
+      confirm(
+        `Vider tout le journal des mouvements d'aujourd'hui ?\n\nLe fond de caisse initial d'ouverture (${settingsOpeningBalance} €) sera conservé pour démarrer une journée vierge.`
+      )
+    ) {
+      clearDayTransactions(true);
+      setIsSettingsModalOpen(false);
+      setSelectedTxIds([]);
+      setTxFeedback(`Journal du jour réinitialisé. Fond d’ouverture conservé : ${Number(settingsOpeningBalance).toFixed(2)} €.`);
+      setTimeout(() => setTxFeedback(null), 4000);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Banner */}
@@ -188,6 +340,26 @@ export const CashRegisterTab: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Bouton Paramètres de Caisse */}
+          <button
+            onClick={() => setIsSettingsModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg transition-colors shadow-2xs"
+            title="Configurer ou rétablir les paramètres de la caisse journalière (fond de caisse, option suppression de ligne)"
+          >
+            <Settings className="w-4 h-4 text-slate-600" />
+            <span>Paramètres de Caisse</span>
+          </button>
+
+          {/* Bouton Rétablir les Paramètres */}
+          <button
+            onClick={handleRestoreSettingsOnly}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-lg transition-colors shadow-2xs"
+            title="Rétablir les paramètres d'origine de la caisse journalière (Fond 250 €, Option suppression active)"
+          >
+            <RotateCcw className="w-4 h-4 text-amber-600" />
+            <span>Rétablir les Paramètres</span>
+          </button>
+
           <button
             onClick={() => setIsCheckoutModalOpen(true)}
             className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white rounded-lg transition-opacity hover:opacity-95 shadow-xs"
@@ -298,6 +470,29 @@ export const CashRegisterTab: React.FC = () => {
             <span className="text-xs font-semibold text-slate-600 bg-white px-2.5 py-1 rounded-md border border-slate-200">
               {todayTransactions.length} opération(s)
             </span>
+
+            {/* Badge état de l'Option suppression de ligne */}
+            {cashSettings.enableLineDeletion !== false ? (
+              <button
+                type="button"
+                onClick={() => setIsSettingsModalOpen(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-md transition-colors"
+                title="Option suppression de ligne activée. Cliquez pour configurer."
+              >
+                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Option suppression : Activée</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsSettingsModalOpen(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-md transition-colors"
+                title="Option suppression de ligne désactivée. Cliquez pour l'activer dans les paramètres."
+              >
+                <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                <span>Suppression désactivée (Activer)</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -317,17 +512,31 @@ export const CashRegisterTab: React.FC = () => {
           </div>
         )}
 
-        {/* Toolbar: Search & Filter */}
+        {/* Toolbar: Search, Filter & Batch Line Deletion */}
         <div className="p-3 border-b border-slate-200 bg-white flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs">
-          <div className="relative flex-1 sm:max-w-xs">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
-            <input
-              type="text"
-              value={searchTxQuery}
-              onChange={(e) => setSearchTxQuery(e.target.value)}
-              placeholder="Rechercher une opération, libellé, montant..."
-              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:border-sky-500"
-            />
+          <div className="flex items-center gap-2 flex-1 sm:max-w-md">
+            <div className="relative flex-1">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+              <input
+                type="text"
+                value={searchTxQuery}
+                onChange={(e) => setSearchTxQuery(e.target.value)}
+                placeholder="Rechercher une opération, libellé, montant..."
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:border-sky-500"
+              />
+            </div>
+
+            {selectedTxIds.length > 0 && (
+              <button
+                type="button"
+                onClick={handleDeleteSelected}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg transition-colors shadow-2xs text-xs whitespace-nowrap animate-fadeIn"
+                title="Supprimer toutes les lignes sélectionnées"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Supprimer la sélection ({selectedTxIds.length})</span>
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5 overflow-x-auto">
@@ -354,128 +563,198 @@ export const CashRegisterTab: React.FC = () => {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase text-[11px]">
-              <tr>
-                <th className="py-2.5 px-4">Heure</th>
-                <th className="py-2.5 px-4">Type</th>
-                <th className="py-2.5 px-4">Libellé de l’opération</th>
-                <th className="py-2.5 px-4">Règlement</th>
-                <th className="py-2.5 px-4 text-right">Montant</th>
-                <th className="py-2.5 px-4 text-center">Option Suppression & Reçu</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {todayTransactions
-                .filter((tx) => {
-                  if (filterTxType !== 'all' && tx.type !== filterTxType) return false;
-                  if (!searchTxQuery) return true;
-                  const q = searchTxQuery.toLowerCase();
-                  return (
-                    tx.label.toLowerCase().includes(q) ||
-                    tx.paymentMethod.toLowerCase().includes(q) ||
-                    tx.amount.toString().includes(q) ||
-                    (tx.notes && tx.notes.toLowerCase().includes(q))
-                  );
-                })
-                .length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-500">
-                    Aucune opération de caisse trouvée pour ces critères.
-                  </td>
-                </tr>
-              ) : (
-                todayTransactions
-                  .filter((tx) => {
-                    if (filterTxType !== 'all' && tx.type !== filterTxType) return false;
-                    if (!searchTxQuery) return true;
-                    const q = searchTxQuery.toLowerCase();
-                    return (
-                      tx.label.toLowerCase().includes(q) ||
-                      tx.paymentMethod.toLowerCase().includes(q) ||
-                      tx.amount.toString().includes(q) ||
-                      (tx.notes && tx.notes.toLowerCase().includes(q))
-                    );
-                  })
-                  .map((tx) => {
-                    const isOut = tx.type === 'retrait_caisse';
-                    return (
-                      <tr key={tx.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="py-3 px-4 text-slate-500 font-mono text-[11px] tabular-nums">
-                          {new Date(tx.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                        </td>
+          {(() => {
+            const filtered = todayTransactions.filter((tx) => {
+              if (filterTxType !== 'all' && tx.type !== filterTxType) return false;
+              if (!searchTxQuery) return true;
+              const q = searchTxQuery.toLowerCase();
+              return (
+                tx.label.toLowerCase().includes(q) ||
+                tx.paymentMethod.toLowerCase().includes(q) ||
+                tx.amount.toString().includes(q) ||
+                (tx.notes && tx.notes.toLowerCase().includes(q))
+              );
+            });
 
-                        <td className="py-3 px-4 font-semibold">
-                          {tx.type === 'encaissement_facture' ? (
-                            <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-200">Facture</span>
-                          ) : tx.type === 'vente_directe' ? (
-                            <span className="text-blue-700 bg-blue-50 px-2 py-0.5 rounded text-[10px] font-bold border border-blue-200">Vente Comptoir</span>
-                          ) : tx.type === 'apport_caisse' ? (
-                            <span className="text-purple-700 bg-purple-50 px-2 py-0.5 rounded text-[10px] font-bold border border-purple-200">Apport Caisse</span>
-                          ) : (
-                            <span className="text-rose-700 bg-rose-50 px-2 py-0.5 rounded text-[10px] font-bold border border-rose-200">Sortie Caisse</span>
-                          )}
-                        </td>
+            const allSelected =
+              filtered.length > 0 && filtered.every((tx) => selectedTxIds.includes(tx.id));
 
-                        <td className="py-3 px-4 font-medium text-slate-800">
-                          {tx.label}
-                          {tx.notes && <span className="text-slate-400 text-[10px] block font-normal">{tx.notes}</span>}
-                        </td>
+            const toggleSelectAll = () => {
+              if (allSelected) {
+                const filteredIds = new Set(filtered.map((t) => t.id));
+                setSelectedTxIds(selectedTxIds.filter((id) => !filteredIds.has(id)));
+              } else {
+                const combined = new Set([...selectedTxIds, ...filtered.map((t) => t.id)]);
+                setSelectedTxIds(Array.from(combined));
+              }
+            };
 
-                        <td className="py-3 px-4">
-                          <span className="capitalize text-slate-600 font-medium">
-                            {tx.paymentMethod === 'especes'
-                              ? 'Espèces'
-                              : tx.paymentMethod === 'carte'
-                              ? 'Carte Bancaire'
-                              : tx.paymentMethod === 'cheque'
-                              ? 'Chèque'
-                              : 'Virement'}
-                          </span>
-                        </td>
+            return (
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase text-[11px]">
+                  <tr>
+                    <th className="py-2.5 px-3 w-10 text-center">
+                      <button
+                        type="button"
+                        onClick={toggleSelectAll}
+                        className="text-slate-400 hover:text-slate-700"
+                        title={allSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
+                      >
+                        {allSelected ? (
+                          <CheckSquare className="w-4 h-4 text-sky-600" />
+                        ) : (
+                          <Square className="w-4 h-4 text-slate-400" />
+                        )}
+                      </button>
+                    </th>
+                    <th className="py-2.5 px-3">Heure</th>
+                    <th className="py-2.5 px-4">Type</th>
+                    <th className="py-2.5 px-4">Libellé de l’opération</th>
+                    <th className="py-2.5 px-4">Règlement</th>
+                    <th className="py-2.5 px-4 text-right">Montant</th>
+                    <th className="py-2.5 px-4 text-center">Option Suppression & Reçu</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filtered.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-slate-500">
+                        Aucune opération de caisse trouvée pour ces critères.
+                      </td>
+                    </tr>
+                  ) : (
+                    filtered.map((tx) => {
+                      const isOut = tx.type === 'retrait_caisse';
+                      const isSelected = selectedTxIds.includes(tx.id);
 
-                        <td className={`py-3 px-4 text-right font-mono font-bold text-sm tabular-nums ${isOut ? 'text-rose-600' : 'text-slate-900'}`}>
-                          {isOut ? '-' : '+'}{tx.amount.toFixed(2)} €
-                        </td>
-
-                        <td className="py-3 px-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            {/* Bouton d'impression reçu */}
+                      return (
+                        <tr
+                          key={tx.id}
+                          className={`hover:bg-slate-50/80 transition-colors ${
+                            isSelected ? 'bg-sky-50/50' : ''
+                          }`}
+                        >
+                          <td className="py-3 px-3 text-center">
                             <button
-                              onClick={() => setPrintedReceipt(tx)}
-                              className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
-                              title="Imprimer le ticket de caisse avec logo"
-                            >
-                              <Printer className="w-3.5 h-3.5" />
-                            </button>
-
-                            {/* Option explicite de suppression de la ligne dans le journal de caisse */}
-                            <button
+                              type="button"
                               onClick={() => {
-                                if (
-                                  confirm(
-                                    `Confirmer la suppression de cette ligne d'opération de caisse ?\n\n• Opération : « ${tx.label} »\n• Montant : ${tx.amount.toFixed(2)} € (${tx.paymentMethod})\n\nLe solde de caisse et les totaux seront immédiatement recalculés.`
-                                  )
-                                ) {
-                                  deleteCashTransaction(tx.id);
-                                  setTxFeedback(`Ligne « ${tx.label} » supprimée. Solde de caisse actualisé.`);
-                                  setTimeout(() => setTxFeedback(null), 3500);
+                                if (isSelected) {
+                                  setSelectedTxIds(selectedTxIds.filter((id) => id !== tx.id));
+                                } else {
+                                  setSelectedTxIds([...selectedTxIds, tx.id]);
                                 }
                               }}
-                              className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 hover:text-rose-900 border border-rose-200 rounded-md transition-all shadow-2xs group"
-                              title="Supprimer définitivement cette ligne du journal de caisse"
+                              className="text-slate-400 hover:text-slate-700"
                             >
-                              <Trash2 className="w-3.5 h-3.5 text-rose-500 group-hover:scale-110" />
-                              <span>Supprimer</span>
+                              {isSelected ? (
+                                <CheckSquare className="w-4 h-4 text-sky-600" />
+                              ) : (
+                                <Square className="w-4 h-4 text-slate-300 hover:text-slate-500" />
+                              )}
                             </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-              )}
-            </tbody>
-          </table>
+                          </td>
+
+                          <td className="py-3 px-3 text-slate-500 font-mono text-[11px] tabular-nums whitespace-nowrap">
+                            {new Date(tx.date).toLocaleTimeString('fr-FR', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </td>
+
+                          <td className="py-3 px-4 font-semibold">
+                            {tx.type === 'encaissement_facture' ? (
+                              <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-200">
+                                Facture
+                              </span>
+                            ) : tx.type === 'vente_directe' ? (
+                              <span className="text-blue-700 bg-blue-50 px-2 py-0.5 rounded text-[10px] font-bold border border-blue-200">
+                                Vente Comptoir
+                              </span>
+                            ) : tx.type === 'apport_caisse' ? (
+                              <span className="text-purple-700 bg-purple-50 px-2 py-0.5 rounded text-[10px] font-bold border border-purple-200">
+                                Apport Caisse
+                              </span>
+                            ) : (
+                              <span className="text-rose-700 bg-rose-50 px-2 py-0.5 rounded text-[10px] font-bold border border-rose-200">
+                                Sortie Caisse
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-4 font-medium text-slate-800">
+                            {tx.label}
+                            {tx.notes && (
+                              <span className="text-slate-400 text-[10px] block font-normal">
+                                {tx.notes}
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-4">
+                            <span className="capitalize text-slate-600 font-medium">
+                              {tx.paymentMethod === 'especes'
+                                ? 'Espèces'
+                                : tx.paymentMethod === 'carte'
+                                ? 'Carte Bancaire'
+                                : tx.paymentMethod === 'cheque'
+                                ? 'Chèque'
+                                : 'Virement'}
+                            </span>
+                          </td>
+
+                          <td
+                            className={`py-3 px-4 text-right font-mono font-bold text-sm tabular-nums ${
+                              isOut ? 'text-rose-600' : 'text-slate-900'
+                            }`}
+                          >
+                            {isOut ? '-' : '+'}
+                            {tx.amount.toFixed(2)} €
+                          </td>
+
+                          <td className="py-3 px-4 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              {/* Bouton d'impression reçu */}
+                              <button
+                                type="button"
+                                onClick={() => setPrintedReceipt(tx)}
+                                className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+                                title="Imprimer le ticket de caisse avec logo"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* Option de suppression de la ligne */}
+                              {cashSettings.enableLineDeletion !== false ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteSingle(tx)}
+                                  className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 hover:text-rose-900 border border-rose-200 rounded-md transition-all shadow-2xs group"
+                                  title="Supprimer cette ligne d'opération de caisse (recalcule le solde en temps réel)"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-rose-500 group-hover:scale-110" />
+                                  <span>Supprimer</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setIsSettingsModalOpen(true)}
+                                  className="flex items-center gap-1 px-2 py-1 text-[10px] text-slate-400 bg-slate-50 border border-slate-200 rounded-md hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                                  title="Suppression désactivée dans les paramètres de la caisse journalière. Cliquez pour l'activer."
+                                >
+                                  <ShieldAlert className="w-3 h-3 text-slate-400" />
+                                  <span>Verrouillé</span>
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            );
+          })()}
         </div>
       </div>
 
@@ -908,7 +1187,19 @@ export const CashRegisterTab: React.FC = () => {
 
             <div id="printable-receipt" className="space-y-3">
               {garage.logoUrl && (
-                <img src={garage.logoUrl} alt={garage.name} className="w-16 h-16 object-contain mx-auto" />
+                <img
+                  src={garage.logoUrl}
+                  alt={garage.name}
+                  className="object-contain mx-auto bg-transparent"
+                  style={{
+                    height: `${Math.min(Math.max((garage.logoSize || 140) * 0.55, 56), 90)}px`,
+                    maxWidth: '180px',
+                    border: 'none',
+                    outline: 'none',
+                    boxShadow: 'none',
+                    background: 'transparent',
+                  }}
+                />
               )}
               <div>
                 <h4 className="font-bold text-slate-900 text-sm">{garage.name}</h4>
@@ -973,7 +1264,19 @@ export const CashRegisterTab: React.FC = () => {
             <div id="printable-z" className="space-y-4 text-slate-800">
               <div className="text-center pb-3 border-b border-slate-200">
                 {garage.logoUrl && (
-                  <img src={garage.logoUrl} alt={garage.name} className="w-16 h-16 object-contain mx-auto mb-2" />
+                  <img
+                    src={garage.logoUrl}
+                    alt={garage.name}
+                    className="object-contain mx-auto mb-2 bg-transparent"
+                    style={{
+                      height: `${Math.min(Math.max((garage.logoSize || 140) * 0.55, 56), 90)}px`,
+                      maxWidth: '180px',
+                      border: 'none',
+                      outline: 'none',
+                      boxShadow: 'none',
+                      background: 'transparent',
+                    }}
+                  />
                 )}
                 <h3 className="font-black text-slate-900 text-base">{garage.name}</h3>
                 <p className="text-[11px] text-slate-500">SIRET {garage.siret} · {garage.city}</p>
@@ -1041,6 +1344,207 @@ export const CashRegisterTab: React.FC = () => {
                 <span>Imprimer le rapport Z</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Paramètres de la Caisse Journalière & Fond de Caisse */}
+      {isSettingsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="relative w-full max-w-lg bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden my-8">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
+              <div className="flex items-center gap-2">
+                <Settings className="w-5 h-5 text-slate-700" />
+                <h3 className="text-base font-bold text-slate-900">
+                  Paramètres de la Caisse Journalière & Fond de Caisse
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSettingsModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCashSettings} className="p-6 space-y-5 text-xs">
+              {/* Fond de caisse initial */}
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                <label className="font-bold text-slate-900 block text-xs">
+                  Fond de caisse initial d’ouverture (€)
+                </label>
+                <p className="text-[11px] text-slate-500">
+                  Montant en espèces déposé chaque matin dans le tiroir-caisse pour assurer le rendu de monnaie aux clients.
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      min="0"
+                      step="5"
+                      required
+                      value={settingsOpeningBalance}
+                      onChange={(e) => setSettingsOpeningBalance(Number(e.target.value))}
+                      className="w-full pl-3 pr-8 py-2 text-base font-black text-slate-900 border border-slate-300 rounded-lg tabular-nums bg-white"
+                    />
+                    <span className="absolute right-3 top-2.5 font-bold text-slate-400">€</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] font-semibold text-slate-400">Paliers rapides :</span>
+                  {[100, 150, 200, 250, 300, 500].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setSettingsOpeningBalance(val)}
+                      className={`px-2 py-0.5 rounded text-[11px] font-semibold border transition-colors ${
+                        settingsOpeningBalance === val
+                          ? 'bg-sky-50 border-sky-400 text-sky-800'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      {val} €
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Responsable de caisse */}
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">
+                  Nom du responsable de caisse par défaut
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={settingsCashier}
+                  onChange={(e) => setSettingsCashier(e.target.value)}
+                  placeholder="ex: Fabrice (Gérant)"
+                  className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                />
+              </div>
+
+              {/* Option de suppression de ligne dans les paramètres */}
+              <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Trash2 className="w-4 h-4 text-rose-600" />
+                    <span className="font-bold text-slate-900 text-xs">
+                      Option de suppression de ligne dans le journal
+                    </span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={settingsEnableLineDeletion}
+                      onChange={(e) => setSettingsEnableLineDeletion(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                  </label>
+                </div>
+
+                <p className="text-[11px] text-slate-500">
+                  Permet d’effacer des écritures erronées ou annulées (encaissement de facture, vente comptoir, apport ou retrait) directement depuis le journal de caisse journalier.
+                </p>
+
+                {settingsEnableLineDeletion ? (
+                  <div className="pt-2 border-t border-slate-100 space-y-2">
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={settingsConfirmDelete}
+                        onChange={(e) => setSettingsConfirmDelete(e.target.checked)}
+                        className="mt-0.5 rounded border-slate-300 text-sky-600"
+                      />
+                      <div>
+                        <span className="font-bold text-slate-800 text-xs block">
+                          Demander confirmation avant chaque suppression
+                        </span>
+                        <span className="text-[10px] text-slate-500 block">
+                          Affiche un message récapitulatif pour sécuriser la suppression et éviter les erreurs involontaires.
+                        </span>
+                      </div>
+                    </label>
+                  </div>
+                ) : (
+                  <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-[11px] flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>La suppression est actuellement verrouillée. Les boutons de suppression seront masqués ou désactivés dans le journal.</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Rétablissement des paramètres de la caisse journalière */}
+              <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-xl space-y-3">
+                <span className="font-bold text-amber-900 block text-xs flex items-center gap-1.5">
+                  <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Rétablissement des Paramètres de Caisse Journalière</span>
+                </span>
+                <p className="text-[11px] text-amber-800/80">
+                  Rétablissez instantanément la configuration standard (Fond de caisse : 250,00 €, Option suppression de ligne activée, confirmation sécurisée activée).
+                </p>
+
+                <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleRestoreSettingsOnly();
+                      setIsSettingsModalOpen(false);
+                    }}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold rounded-lg transition-colors text-xs shadow-2xs"
+                    title="Rétablir uniquement les paramètres (fond 250€, suppression activée) sans affecter les écritures déjà saisies"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-amber-700" />
+                    <span>Rétablir Paramètres par Défaut (250€)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleQuickRestoreDefault();
+                      setIsSettingsModalOpen(false);
+                    }}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg transition-colors text-xs shadow-2xs"
+                    title="Rétablir les paramètres par défaut et réinitialiser les opérations types de caisse"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Rétablir Tout (Paramètres + Opérations)</span>
+                  </button>
+                </div>
+
+                <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between text-[11px]">
+                  <span className="text-amber-800">Démarrer une nouvelle journée vierge :</span>
+                  <button
+                    type="button"
+                    onClick={handleClearDay}
+                    className="text-rose-700 hover:text-rose-900 font-semibold underline"
+                  >
+                    Vider le journal du jour (garder fond de caisse)
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setIsSettingsModalOpen(false)}
+                  className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-white font-semibold rounded-lg shadow-xs"
+                  style={{ backgroundColor: theme.primaryColor }}
+                >
+                  Enregistrer les Paramètres
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

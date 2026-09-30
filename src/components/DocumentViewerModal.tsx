@@ -8,6 +8,7 @@ export const DocumentViewerModal: React.FC = () => {
     viewingDocument,
     setViewingDocument,
     garage,
+    updateGarage,
     theme,
     clients,
     vehicles,
@@ -159,11 +160,15 @@ export const DocumentViewerModal: React.FC = () => {
                   <img
                     src={garage.logoUrl}
                     alt={garage.name}
-                    className="object-contain rounded-lg shrink-0 border border-slate-200 p-1.5 shadow-xs bg-white"
+                    className="object-contain shrink-0 bg-transparent"
                     style={{
                       width: `${garage.logoSize || 140}px`,
                       maxHeight: `${Math.round((garage.logoSize || 140) * 1.15)}px`,
                       height: 'auto',
+                      border: 'none',
+                      outline: 'none',
+                      boxShadow: 'none',
+                      background: 'transparent',
                     }}
                   />
                 ) : (

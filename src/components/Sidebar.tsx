@@ -88,10 +88,14 @@ export const Sidebar: React.FC = () => {
             <img
               src={garage.logoUrl}
               alt={garage.name}
-              className="object-contain rounded-lg shrink-0 bg-white p-1 border border-slate-200 shadow-xs transition-all hover:scale-105"
+              className="object-contain shrink-0 bg-transparent transition-transform hover:scale-105"
               style={{
                 width: `${Math.min(Math.max((garage.logoSize || 140) * 0.45, 44), 66)}px`,
                 height: `${Math.min(Math.max((garage.logoSize || 140) * 0.45, 44), 66)}px`,
+                border: 'none',
+                outline: 'none',
+                boxShadow: 'none',
+                background: 'transparent',
               }}
             />
           ) : (

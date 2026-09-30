@@ -82,7 +82,7 @@ export const GarageSettingsModal: React.FC = () => {
                   Logo Officiel de l’Établissement
                 </label>
                 <p className="text-xs text-slate-500">
-                  Ce logo s'affiche en haut de la barre de navigation et sur tous les devis, bons de commande, factures et tickets de caisse.
+                  Affiché sans contour ni couleur de fond sur vos devis, factures, barre latérale et reçus de caisse (seul votre visuel détouré apparaît).
                 </p>
               </div>
               {logoPreview && (
@@ -101,26 +101,40 @@ export const GarageSettingsModal: React.FC = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row items-center gap-6">
-              {/* Logo Box avec taille dynamique et aperçu en temps réel */}
-              <div
-                className="rounded-xl border-2 border-dashed border-slate-300 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-xs relative group transition-all"
-                style={{
-                  width: `${Math.min(Math.max(formData.logoSize || 140, 100), 220)}px`,
-                  height: `${Math.min(Math.max(formData.logoSize || 140, 100), 220)}px`,
-                }}
-              >
-                {logoPreview ? (
-                  <img
-                    src={logoPreview}
-                    alt="Logo garage"
-                    className="w-full h-full object-contain p-2"
-                  />
-                ) : (
-                  <div className="text-center p-2 text-slate-400">
-                    <ImageIcon className="w-8 h-8 mx-auto mb-1 stroke-1" />
-                    <span className="text-[10px] block">Aucun logo</span>
-                  </div>
-                )}
+              {/* Logo Box avec taille dynamique et aperçu en temps réel sans contour ni fond */}
+              <div className="flex flex-col items-center gap-1.5 shrink-0">
+                <div
+                  className="rounded-xl border border-dashed border-slate-300 flex items-center justify-center overflow-hidden shrink-0 relative transition-all"
+                  style={{
+                    width: `${Math.min(Math.max(formData.logoSize || 140, 100), 220)}px`,
+                    height: `${Math.min(Math.max(formData.logoSize || 140, 100), 220)}px`,
+                    background: 'repeating-conic-gradient(#f8fafc 0% 25%, #ffffff 0% 50%) 50% / 16px 16px',
+                  }}
+                  title="Aperçu du logo (fond transparent, aucun contour appliqué)"
+                >
+                  {logoPreview ? (
+                    <img
+                      src={logoPreview}
+                      alt="Logo garage"
+                      className="w-full h-full object-contain p-1"
+                      style={{
+                        border: 'none',
+                        outline: 'none',
+                        boxShadow: 'none',
+                        background: 'transparent',
+                      }}
+                    />
+                  ) : (
+                    <div className="text-center p-2 text-slate-400">
+                      <ImageIcon className="w-8 h-8 mx-auto mb-1 stroke-1" />
+                      <span className="text-[10px] block">Aucun logo</span>
+                    </div>
+                  )}
+                </div>
+                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                  <span>✓</span>
+                  <span>Sans contour ni fond</span>
+                </span>
               </div>
 
               {/* Upload Controls */}

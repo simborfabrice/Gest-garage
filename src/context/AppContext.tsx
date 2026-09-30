@@ -11,6 +11,7 @@ import {
   CashTransaction,
   CashDayClose,
   CatalogItem,
+  CashRegisterSettings,
 } from '../types';
 import { storageService, recalculateDocumentTotals } from '../services/storage';
 
@@ -77,10 +78,16 @@ interface AppContextType {
   updateCatalogItem: (id: string, data: Partial<CatalogItem>) => void;
   deleteCatalogItem: (id: string) => void;
 
-  // Cash
+  // Cash & Settings
   cashTransactions: CashTransaction[];
   addCashTransaction: (data: Omit<CashTransaction, 'id' | 'date'>) => CashTransaction;
   deleteCashTransaction: (id: string) => void;
+  deleteCashTransactionsBatch: (ids: string[]) => void;
+  restoreDefaultCash: () => void;
+  restoreCashSettings: () => void;
+  clearDayTransactions: (preserveOpeningBalance?: boolean) => void;
+  cashSettings: CashRegisterSettings;
+  updateCashSettings: (settings: Partial<CashRegisterSettings>) => void;
   dayCloses: CashDayClose[];
   addDayClose: (data: Omit<CashDayClose, 'id' | 'closedAt'>) => CashDayClose;
 
@@ -108,6 +115,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [cashTransactions, setCashTransactions] = useState<CashTransaction[]>(() => storageService.getCashTransactions());
   const [dayCloses, setDayCloses] = useState<CashDayClose[]>(() => storageService.getDayCloses());
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>(() => storageService.getCatalogItems());
+  const [cashSettings, setCashSettings] = useState<CashRegisterSettings>(() => storageService.getCashSettings());
 
   // Dynamically update CSS root variables when theme changes
   useEffect(() => {
@@ -375,6 +383,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     storageService.saveCashTransactions(updated);
   };
 
+  const deleteCashTransactionsBatch = (ids: string[]) => {
+    const idsSet = new Set(ids);
+    const updated = cashTransactions.filter((tx) => !idsSet.has(tx.id));
+    setCashTransactions(updated);
+    storageService.saveCashTransactions(updated);
+  };
+
+  const updateCashSettings = (data: Partial<CashRegisterSettings>) => {
+    const updated = { ...cashSettings, ...data };
+    setCashSettings(updated);
+    storageService.saveCashSettings(updated);
+  };
+
+  const restoreDefaultCash = () => {
+    const restored = storageService.restoreDefaultCash();
+    setCashTransactions(restored.transactions);
+    setCashSettings(restored.settings);
+  };
+
+  const restoreCashSettings = () => {
+    const restored = storageService.restoreCashSettings();
+    setCashSettings(restored);
+  };
+
+  const clearDayTransactions = (preserveOpeningBalance: boolean = true) => {
+    const today = '2026-09-30';
+    let updated: CashTransaction[];
+    if (preserveOpeningBalance) {
+      const openingTx = cashTransactions.find(
+        (tx) => tx.date.startsWith(today) && tx.label.toLowerCase().includes('ouverture')
+      ) || {
+        id: `csh-${Date.now()}`,
+        date: `${today}T08:00:00Z`,
+        type: 'apport_caisse',
+        label: 'Fond de caisse initial (Ouverture)',
+        amount: cashSettings.initialOpeningBalance || 250.0,
+        paymentMethod: 'especes',
+        notes: 'Fond de caisse d’ouverture réinitialisé',
+      };
+      updated = [openingTx, ...cashTransactions.filter((tx) => !tx.date.startsWith(today))];
+    } else {
+      updated = cashTransactions.filter((tx) => !tx.date.startsWith(today));
+    }
+    setCashTransactions(updated);
+    storageService.saveCashTransactions(updated);
+  };
+
   const addDayClose = (data: Omit<CashDayClose, 'id' | 'closedAt'>): CashDayClose => {
     const newClose: CashDayClose = {
       ...data,
@@ -424,6 +479,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCashTransactions(storageService.getCashTransactions());
     setDayCloses(storageService.getDayCloses());
     setCatalogItems(storageService.getCatalogItems());
+    setCashSettings(storageService.getCashSettings());
   };
 
   return (
@@ -474,6 +530,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         cashTransactions,
         addCashTransaction,
         deleteCashTransaction,
+        deleteCashTransactionsBatch,
+        restoreDefaultCash,
+        restoreCashSettings,
+        clearDayTransactions,
+        cashSettings,
+        updateCashSettings,
         dayCloses,
         addDayClose,
         resetAllData,
