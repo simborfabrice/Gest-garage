@@ -22,6 +22,7 @@ import {
   List,
 } from 'lucide-react';
 import { Appointment } from '../../types';
+import { formatDate, formatDateLong, formatDateFull } from '../../utils/dateUtils';
 
 export const CalendarTab: React.FC = () => {
   const {
@@ -187,7 +188,7 @@ export const CalendarTab: React.FC = () => {
       totalTVA: 0,
       totalTTC: 0,
       amountPaid: 0,
-      notes: `Établi depuis le rendez-vous atelier du ${apt.date}. Mécanicien : ${apt.mechanic}.`,
+      notes: `Établi depuis le rendez-vous atelier du ${formatDate(apt.date)}. Mécanicien : ${apt.mechanic}.`,
       mileageAtService: vehicle?.mileage,
     });
 
@@ -708,7 +709,7 @@ export const CalendarTab: React.FC = () => {
             <div>
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <Clock className="w-5 h-5 text-slate-700" />
-                <span>Rendez-vous du {selectedDayDate}</span>
+                <span>Rendez-vous du {formatDateFull(selectedDayDate)}</span>
               </h3>
               <p className="text-xs text-slate-500">
                 Liste complète des interventions prévues, mécaniciens affectés et émission directe de devis / factures.
@@ -725,7 +726,7 @@ export const CalendarTab: React.FC = () => {
                 style={{ backgroundColor: theme.primaryColor }}
               >
                 <Plus className="w-4 h-4" />
-                <span>Ajouter un RDV pour le {selectedDayDate.slice(-2)}</span>
+                <span>Ajouter un RDV ({formatDate(selectedDayDate)})</span>
               </button>
 
               <button
@@ -742,7 +743,7 @@ export const CalendarTab: React.FC = () => {
             {getAppointmentsForDay(selectedDayDate).length === 0 ? (
               <div className="p-12 text-center text-slate-500 text-xs border border-dashed border-slate-200 rounded-xl space-y-3">
                 <CalendarIcon className="w-8 h-8 mx-auto text-slate-300" />
-                <p>Aucun rendez-vous planifié pour le {selectedDayDate}.</p>
+                <p>Aucun rendez-vous planifié pour le {formatDateLong(selectedDayDate)}.</p>
                 <button
                   onClick={() => {
                     setNewDate(selectedDayDate);

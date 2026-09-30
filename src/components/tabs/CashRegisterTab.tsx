@@ -24,6 +24,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { CashTransaction, CashDayClose } from '../../types';
+import { formatDate, formatDateLong, formatDateTime } from '../../utils/dateUtils';
 
 export const CashRegisterTab: React.FC = () => {
   const {
@@ -607,7 +608,7 @@ export const CashRegisterTab: React.FC = () => {
                         )}
                       </button>
                     </th>
-                    <th className="py-2.5 px-3">Heure</th>
+                    <th className="py-2.5 px-3">Date & Heure</th>
                     <th className="py-2.5 px-4">Type</th>
                     <th className="py-2.5 px-4">Libellé de l’opération</th>
                     <th className="py-2.5 px-4">Règlement</th>
@@ -655,10 +656,13 @@ export const CashRegisterTab: React.FC = () => {
                           </td>
 
                           <td className="py-3 px-3 text-slate-500 font-mono text-[11px] tabular-nums whitespace-nowrap">
-                            {new Date(tx.date).toLocaleTimeString('fr-FR', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
+                            <span className="block font-semibold text-slate-800">{formatDate(tx.date)}</span>
+                            <span className="text-[10px] text-slate-400">
+                              {new Date(tx.date).toLocaleTimeString('fr-FR', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
                           </td>
 
                           <td className="py-3 px-4 font-semibold">
@@ -773,7 +777,7 @@ export const CashRegisterTab: React.FC = () => {
             >
               <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                 <span className="font-bold text-slate-900 text-sm">
-                  Clôture Z du {close.date}
+                  Clôture Z du {formatDate(close.date)}
                 </span>
                 <button
                   onClick={() => setPrintedZClose(close)}
@@ -1212,7 +1216,7 @@ export const CashRegisterTab: React.FC = () => {
 
               <div className="text-left space-y-1 text-slate-700">
                 <p className="font-semibold text-slate-900">REÇU DE CAISSE</p>
-                <p>Date : {new Date(printedReceipt.date).toLocaleString('fr-FR')}</p>
+                <p>Date : {formatDateTime(printedReceipt.date)}</p>
                 <p>Libellé : {printedReceipt.label}</p>
                 <p>Mode : <span className="uppercase font-semibold">{printedReceipt.paymentMethod}</span></p>
               </div>
@@ -1281,7 +1285,7 @@ export const CashRegisterTab: React.FC = () => {
                 <h3 className="font-black text-slate-900 text-base">{garage.name}</h3>
                 <p className="text-[11px] text-slate-500">SIRET {garage.siret} · {garage.city}</p>
                 <p className="font-bold text-sm text-slate-900 mt-2">CLÔTURE JOURNALIÈRE TICKET Z</p>
-                <p className="text-[11px] text-slate-500">Date : {printedZClose.date} · Clôturé le {new Date(printedZClose.closedAt).toLocaleTimeString('fr-FR')}</p>
+                <p className="text-[11px] text-slate-500">Date : {formatDate(printedZClose.date)} · Clôturé à {new Date(printedZClose.closedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
               </div>
 
               <div className="space-y-2">

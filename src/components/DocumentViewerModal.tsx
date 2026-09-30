@@ -2,6 +2,7 @@ import React from 'react';
 import { useApp } from '../context/AppContext';
 import { X, Printer, CheckCircle, Clock, AlertTriangle, FileText, ArrowRight } from 'lucide-react';
 import { GarageDocument } from '../types';
+import { formatDate } from '../utils/dateUtils';
 
 export const DocumentViewerModal: React.FC = () => {
   const {
@@ -217,12 +218,12 @@ export const DocumentViewerModal: React.FC = () => {
                   N° {doc.referenceNumber}
                 </p>
                 <div className="text-xs text-slate-600 mt-1 space-y-0.5">
-                  <p>Date d'émission : <span className="font-semibold text-slate-900">{doc.date}</span></p>
+                  <p>Date d'émission : <span className="font-semibold text-slate-900">{formatDate(doc.date)}</span></p>
                   {isQuote && doc.validityDate && (
-                    <p>Validité jusqu'au : <span className="font-semibold text-slate-900">{doc.validityDate}</span></p>
+                    <p>Validité jusqu'au : <span className="font-semibold text-slate-900">{formatDate(doc.validityDate)}</span></p>
                   )}
                   {isInvoice && doc.dueDate && (
-                    <p>Date d'échéance : <span className="font-semibold text-slate-900">{doc.dueDate}</span></p>
+                    <p>Date d'échéance : <span className="font-semibold text-slate-900">{formatDate(doc.dueDate)}</span></p>
                   )}
                   {doc.relatedQuoteId && <p className="text-[11px] text-slate-400">Réf devis associé</p>}
                 </div>

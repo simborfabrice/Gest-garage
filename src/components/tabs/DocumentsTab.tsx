@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { CatalogItem, DocumentItem, DocumentType, GarageDocument } from '../../types';
 import { CatalogShortcutsModal } from '../CatalogShortcutsModal';
+import { formatDate } from '../../utils/dateUtils';
 
 export const DocumentsTab: React.FC = () => {
   const {
@@ -354,7 +355,7 @@ export const DocumentsTab: React.FC = () => {
                       </td>
 
                       <td className="py-3.5 px-4 text-slate-500 tabular-nums">
-                        {doc.date}
+                        {formatDate(doc.date)}
                       </td>
 
                       <td className="py-3.5 px-4 font-semibold text-slate-800">

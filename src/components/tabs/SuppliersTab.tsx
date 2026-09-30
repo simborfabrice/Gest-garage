@@ -16,6 +16,7 @@ import {
   FileCheck,
 } from 'lucide-react';
 import { Supplier, SupplierOrder, SupplierOrderItem } from '../../types';
+import { formatDate } from '../../utils/dateUtils';
 
 export const SuppliersTab: React.FC = () => {
   const {
@@ -254,7 +255,7 @@ export const SuppliersTab: React.FC = () => {
                           {supplier?.name || 'Fournisseur inconnu'}
                         </td>
                         <td className="py-3 px-4 text-slate-500 tabular-nums">
-                          {order.orderDate}
+                          {formatDate(order.orderDate)}
                         </td>
                         <td className="py-3 px-4 text-slate-600 max-w-xs truncate">
                           {order.items.map((it) => `${it.quantity}x ${it.description}`).join(', ')}

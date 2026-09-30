@@ -17,6 +17,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { Client, Vehicle } from '../../types';
+import { formatDate, formatDateLong } from '../../utils/dateUtils';
 
 export const ClientsTab: React.FC = () => {
   const {
@@ -311,7 +312,7 @@ export const ClientsTab: React.FC = () => {
                       </p>
                     )}
                     <p className="text-[11px] text-slate-400">
-                      Client enregistré le {selectedClient.createdAt}
+                      Client enregistré le {formatDate(selectedClient.createdAt)}
                     </p>
                   </div>
                 </div>
@@ -411,7 +412,7 @@ export const ClientsTab: React.FC = () => {
 
                       <div className="pt-1 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-600">
                         <span>Kilométrage : <strong className="text-slate-900">{veh.mileage.toLocaleString('fr-FR')} km</strong></span>
-                        <span>CT : {veh.lastInspectionDate}</span>
+                        <span>CT : {formatDate(veh.lastInspectionDate)}</span>
                       </div>
                     </div>
                   ))}
@@ -453,7 +454,7 @@ export const ClientsTab: React.FC = () => {
                             {doc.type}
                           </span>
                           <span className="text-slate-400">·</span>
-                          <span className="text-slate-500">{doc.date}</span>
+                          <span className="text-slate-500">{formatDate(doc.date)}</span>
                         </div>
 
                         <div className="flex items-center gap-3">

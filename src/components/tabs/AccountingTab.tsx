@@ -13,6 +13,7 @@ import {
   ArrowDownRight,
   Eye,
 } from 'lucide-react';
+import { formatDate } from '../../utils/dateUtils';
 
 export const AccountingTab: React.FC = () => {
   const {
@@ -405,10 +406,10 @@ export const AccountingTab: React.FC = () => {
                         {client ? (client.type === 'professionnel' ? client.companyName : `${client.firstName} ${client.lastName}`) : 'Client inconnu'}
                       </td>
                       <td className="py-3 px-4 text-slate-500 tabular-nums">
-                        {inv.date}
+                        {formatDate(inv.date)}
                       </td>
                       <td className="py-3 px-4 text-amber-700 font-medium tabular-nums">
-                        {inv.dueDate || 'À réception'}
+                        {inv.dueDate ? formatDate(inv.dueDate) : 'À réception'}
                       </td>
                       <td className="py-3 px-4 text-right font-mono text-slate-700 tabular-nums">
                         {inv.totalTTC.toFixed(2)} €

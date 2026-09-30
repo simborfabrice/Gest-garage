@@ -10,6 +10,7 @@ import {
   DollarSign,
   Car,
 } from 'lucide-react';
+import { formatDateFull } from '../utils/dateUtils';
 
 export const Header: React.FC = () => {
   const {
@@ -98,6 +99,11 @@ export const Header: React.FC = () => {
         <h2 className="text-xs sm:text-sm font-semibold text-slate-700 truncate">
           {getTabTitle()}
         </h2>
+
+        <span className="text-slate-300 hidden md:inline">·</span>
+        <span className="text-xs text-slate-500 font-medium hidden md:inline capitalize">
+          {formatDateFull('2026-09-30')}
+        </span>
       </div>
 
       {/* Zone 3: Primary Actions (Colors customizer, Garage info, Quick action) */}
