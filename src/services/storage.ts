@@ -9,6 +9,7 @@ import {
   GarageDocument,
   CashTransaction,
   CashDayClose,
+  CatalogItem,
 } from '../types';
 
 export const DEFAULT_THEME: ThemeConfig = {
@@ -31,6 +32,7 @@ export const DEFAULT_GARAGE: GarageSettings = {
   name: 'Garage MécaPro & Performance',
   slogan: 'Entretien Toutes Marques · Diagnostic Électronique · Carrosserie & Climatisation',
   logoUrl: '/src/assets/images/garage_logo_emblem_1790760547751.jpg',
+  logoSize: 140, // Taille par défaut généreuse et redimensionnable à volonté (50px à 320px)
   address: '14 Rue des Métiers de l’Automobile',
   postalCode: '69007',
   city: 'Lyon',
@@ -795,6 +797,129 @@ const INITIAL_DAY_CLOSES: CashDayClose[] = [
   },
 ];
 
+const INITIAL_CATALOG_ITEMS: CatalogItem[] = [
+  {
+    id: 'cat-1',
+    type: 'forfait',
+    reference: 'FORF-VID-5W30',
+    description: 'Forfait Vidange Synthèse 5W30 C3 + Remplacement Filtre à Huile + Mise à niveau fluides',
+    defaultQuantity: 1,
+    unitPriceHT: 129.0,
+    tvaRate: 20,
+    category: 'Entretien & Vidange',
+  },
+  {
+    id: 'cat-2',
+    type: 'main_oeuvre',
+    reference: 'MO-T1',
+    description: 'Main d’œuvre T1 - Entretien courant, révision & vidange',
+    defaultQuantity: 1,
+    unitPriceHT: 65.0,
+    tvaRate: 20,
+    category: 'Main d’œuvre',
+  },
+  {
+    id: 'cat-3',
+    type: 'main_oeuvre',
+    reference: 'MO-T2',
+    description: 'Main d’œuvre T2 - Freinage, liaisons au sol, amortisseurs, échappement',
+    defaultQuantity: 1,
+    unitPriceHT: 72.0,
+    tvaRate: 20,
+    category: 'Main d’œuvre',
+  },
+  {
+    id: 'cat-4',
+    type: 'main_oeuvre',
+    reference: 'MO-T3',
+    description: 'Main d’œuvre T3 - Distribution, embrayage, boîte & diagnostic complexe',
+    defaultQuantity: 1,
+    unitPriceHT: 79.0,
+    tvaRate: 20,
+    category: 'Main d’œuvre',
+  },
+  {
+    id: 'cat-5',
+    type: 'piece',
+    reference: 'FREIN-DISQ-AV',
+    description: 'Jeu de 2 disques de frein avant ventilés haute performance',
+    defaultQuantity: 1,
+    unitPriceHT: 115.0,
+    tvaRate: 20,
+    category: 'Freinage',
+  },
+  {
+    id: 'cat-6',
+    type: 'piece',
+    reference: 'FREIN-PLAQ-AV',
+    description: 'Jeu de 4 plaquettes de frein avant avec accessoires de montage',
+    defaultQuantity: 1,
+    unitPriceHT: 55.0,
+    tvaRate: 20,
+    category: 'Freinage',
+  },
+  {
+    id: 'cat-7',
+    type: 'forfait',
+    reference: 'FORF-DIAG-OBD',
+    description: 'Forfait diagnostic électronique valise multimarque & lecture codes défaut',
+    defaultQuantity: 1,
+    unitPriceHT: 49.0,
+    tvaRate: 20,
+    category: 'Diagnostic',
+  },
+  {
+    id: 'cat-8',
+    type: 'forfait',
+    reference: 'FORF-CLIM-R134',
+    description: 'Forfait recharge climatisation Gaz R134a + Huile compresseur + Traitement antibactérien',
+    defaultQuantity: 1,
+    unitPriceHT: 89.0,
+    tvaRate: 20,
+    category: 'Climatisation',
+  },
+  {
+    id: 'cat-9',
+    type: 'forfait',
+    reference: 'FORF-GEOM-AV',
+    description: 'Contrôle et réglage géométrie parallélisme train avant banc laser',
+    defaultQuantity: 1,
+    unitPriceHT: 69.0,
+    tvaRate: 20,
+    category: 'Pneumatiques',
+  },
+  {
+    id: 'cat-10',
+    type: 'piece',
+    reference: 'DISTRIB-KIT-POMPE',
+    description: 'Kit de courroie de distribution renforcée + Pompe à eau + Galets',
+    defaultQuantity: 1,
+    unitPriceHT: 195.0,
+    tvaRate: 20,
+    category: 'Distribution',
+  },
+  {
+    id: 'cat-11',
+    type: 'piece',
+    reference: 'HUILE-5W30-1L',
+    description: 'Huile moteur 100% synthèse Castrol Edge 5W30 LL (Bidon 1L)',
+    defaultQuantity: 1,
+    unitPriceHT: 16.5,
+    tvaRate: 20,
+    category: 'Entretien & Vidange',
+  },
+  {
+    id: 'cat-12',
+    type: 'autre',
+    reference: 'RECYC-DECHETS',
+    description: 'Participation traitement et recyclage éco-responsable des déchets d’atelier',
+    defaultQuantity: 1,
+    unitPriceHT: 4.5,
+    tvaRate: 20,
+    category: 'Environnement',
+  },
+];
+
 // LocalStorage Keys
 const KEYS = {
   THEME: 'autopro_theme_v1',
@@ -807,6 +932,7 @@ const KEYS = {
   DOCUMENTS: 'autopro_documents_v1',
   CASH_TRANSACTIONS: 'autopro_cash_transactions_v1',
   DAY_CLOSES: 'autopro_day_closes_v1',
+  CATALOG_ITEMS: 'autopro_catalog_items_v1',
 };
 
 // Generic storage accessors
@@ -837,8 +963,15 @@ export const storageService = {
   }),
   saveTheme: (theme: ThemeConfig) => saveItem(KEYS.THEME, theme),
 
-  getGarage: (): GarageSettings => loadItem<GarageSettings>(KEYS.GARAGE, DEFAULT_GARAGE),
+  getGarage: (): GarageSettings => ({
+    ...DEFAULT_GARAGE,
+    ...loadItem<GarageSettings>(KEYS.GARAGE, DEFAULT_GARAGE),
+  }),
   saveGarage: (garage: GarageSettings) => saveItem(KEYS.GARAGE, garage),
+
+  getCatalogItems: (): CatalogItem[] =>
+    loadItem<CatalogItem[]>(KEYS.CATALOG_ITEMS, INITIAL_CATALOG_ITEMS),
+  saveCatalogItems: (items: CatalogItem[]) => saveItem(KEYS.CATALOG_ITEMS, items),
 
   getClients: (): Client[] => loadItem<Client[]>(KEYS.CLIENTS, INITIAL_CLIENTS),
   saveClients: (clients: Client[]) => saveItem(KEYS.CLIENTS, clients),
@@ -882,6 +1015,7 @@ export const storageService = {
     saveItem(KEYS.DOCUMENTS, INITIAL_DOCUMENTS);
     saveItem(KEYS.CASH_TRANSACTIONS, INITIAL_CASH_TRANSACTIONS);
     saveItem(KEYS.DAY_CLOSES, INITIAL_DAY_CLOSES);
+    saveItem(KEYS.CATALOG_ITEMS, INITIAL_CATALOG_ITEMS);
   },
 
   // Export full backup
@@ -897,6 +1031,7 @@ export const storageService = {
       documents: loadItem(KEYS.DOCUMENTS, INITIAL_DOCUMENTS),
       cashTransactions: loadItem(KEYS.CASH_TRANSACTIONS, INITIAL_CASH_TRANSACTIONS),
       dayCloses: loadItem(KEYS.DAY_CLOSES, INITIAL_DAY_CLOSES),
+      catalogItems: loadItem(KEYS.CATALOG_ITEMS, INITIAL_CATALOG_ITEMS),
       exportedAt: new Date().toISOString(),
     }, null, 2);
   },
@@ -915,6 +1050,7 @@ export const storageService = {
       if (data.documents) saveItem(KEYS.DOCUMENTS, data.documents);
       if (data.cashTransactions) saveItem(KEYS.CASH_TRANSACTIONS, data.cashTransactions);
       if (data.dayCloses) saveItem(KEYS.DAY_CLOSES, data.dayCloses);
+      if (data.catalogItems) saveItem(KEYS.CATALOG_ITEMS, data.catalogItems);
       return true;
     } catch (e) {
       console.error('Failed to import backup:', e);

@@ -15,8 +15,12 @@ import {
   PlusCircle,
   X,
   CreditCard,
+  Sparkles,
+  BookmarkPlus,
+  Wrench,
 } from 'lucide-react';
-import { DocumentItem, DocumentType, GarageDocument } from '../../types';
+import { CatalogItem, DocumentItem, DocumentType, GarageDocument } from '../../types';
+import { CatalogShortcutsModal } from '../CatalogShortcutsModal';
 
 export const DocumentsTab: React.FC = () => {
   const {
@@ -31,12 +35,16 @@ export const DocumentsTab: React.FC = () => {
     vehicles,
     theme,
     setActiveTab,
+    catalogItems,
+    addCatalogItem,
   } = useApp();
 
   const [filterType, setFilterType] = useState<'all' | 'devis' | 'bon_commande' | 'facture'>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false);
+  const [catalogNotification, setCatalogNotification] = useState<string | null>(null);
 
   // New Document Form
   const [newDocType, setNewDocType] = useState<DocumentType>('devis');
@@ -104,6 +112,46 @@ export const DocumentsTab: React.FC = () => {
   const handleRemoveItem = (index: number) => {
     if (items.length <= 1) return;
     setItems(items.filter((_, i) => i !== index));
+  };
+
+  const handleInsertShortcut = (item: CatalogItem) => {
+    setItems((prev) => [
+      ...prev,
+      {
+        type: item.type,
+        reference: item.reference,
+        description: item.description,
+        quantity: item.defaultQuantity || 1,
+        unitPriceHT: item.unitPriceHT,
+        discountPercent: 0,
+        tvaRate: item.tvaRate,
+      },
+    ]);
+    setCatalogNotification(`Ajouté au document : « ${item.description} » (${item.unitPriceHT.toFixed(2)} € HT)`);
+    setTimeout(() => setCatalogNotification(null), 3500);
+  };
+
+  const handleSaveLineAsShortcut = (it: Omit<DocumentItem, 'id'>) => {
+    if (!it.description.trim()) {
+      alert('Veuillez renseigner une désignation avant d’enregistrer comme raccourci.');
+      return;
+    }
+    addCatalogItem({
+      type: it.type,
+      reference: it.reference || `REF-${Math.floor(Math.random() * 9000 + 1000)}`,
+      description: it.description,
+      defaultQuantity: it.quantity || 1,
+      unitPriceHT: it.unitPriceHT || 0,
+      tvaRate: it.tvaRate || 20,
+      category:
+        it.type === 'main_oeuvre'
+          ? 'Main d’œuvre'
+          : it.type === 'forfait'
+          ? 'Entretien & Vidange'
+          : 'Pièces d’usure',
+    });
+    setCatalogNotification(`Prestation enregistrée dans les raccourcis du catalogue !`);
+    setTimeout(() => setCatalogNotification(null), 3500);
   };
 
   const handleCreateDocument = (e: React.FormEvent) => {
@@ -180,17 +228,28 @@ export const DocumentsTab: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setNewDocType('devis');
-            setIsCreateModalOpen(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white rounded-lg transition-opacity hover:opacity-95 shadow-xs"
-          style={{ backgroundColor: theme.primaryColor }}
-        >
-          <Plus className="w-4 h-4" />
-          <span>Créer un Document</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setIsCatalogModalOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-sky-800 bg-sky-50 hover:bg-sky-100 border border-sky-300 rounded-lg transition-colors shadow-2xs"
+            title="Consulter, modifier ou ajouter des raccourcis de prestations et pièces d'atelier"
+          >
+            <Sparkles className="w-4 h-4 text-sky-600" />
+            <span>Raccourcis Prestations & Pièces ({catalogItems.length})</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setNewDocType('devis');
+              setIsCreateModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white rounded-lg transition-opacity hover:opacity-95 shadow-xs"
+            style={{ backgroundColor: theme.primaryColor }}
+          >
+            <Plus className="w-4 h-4" />
+            <span>Créer un Document</span>
+          </button>
+        </div>
       </div>
 
       {/* Tabs Filter Bar */}
@@ -499,115 +558,250 @@ export const DocumentsTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* Items List */}
-              <div className="space-y-2 pt-2 border-t border-slate-200">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900">Prestations & Pièces Facturées</span>
-                  <button
-                    type="button"
-                    onClick={handleAddItem}
-                    className="text-sky-600 hover:text-sky-700 font-semibold flex items-center gap-1"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Ajouter une ligne</span>
-                  </button>
+              {/* Items List - Prestations & Pièces Facturées avec Raccourcis et Tarifs */}
+              <div className="space-y-3 pt-3 border-t border-slate-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <span className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                      <span>Prestations & Pièces Facturées</span>
+                      <span className="text-[10px] font-normal text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                        {items.length} ligne(s)
+                      </span>
+                    </span>
+                    <p className="text-[11px] text-slate-500">
+                      Sélectionnez vos raccourcis d'atelier ou ajoutez vos pièces et forfaits personnalisés.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Bouton d'accès direct à la bibliothèque de raccourcis */}
+                    <button
+                      type="button"
+                      onClick={() => setIsCatalogModalOpen(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-sky-800 bg-sky-50 hover:bg-sky-100 border border-sky-300 transition-colors shadow-2xs"
+                      title="Voir la liste complète des raccourcis, les modifier ou en ajouter de nouveaux"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-sky-600" />
+                      <span>⚡ Liste des Raccourcis ({catalogItems.length})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleAddItem}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Ajouter une ligne</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                  {items.map((it, idx) => (
-                    <div key={idx} className="flex flex-wrap sm:flex-nowrap items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
-                      <select
-                        value={it.type}
-                        onChange={(e) => {
-                          const updated = [...items];
-                          updated[idx].type = e.target.value as any;
-                          setItems(updated);
-                        }}
-                        className="w-24 border border-slate-300 rounded p-1.5 text-xs bg-white"
+                {/* Notification toast if shortcut added or saved */}
+                {catalogNotification && (
+                  <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-lg flex items-center justify-between animate-fadeIn">
+                    <span className="font-medium flex items-center gap-1.5">
+                      <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                      {catalogNotification}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCatalogNotification(null)}
+                      className="text-emerald-600 hover:text-emerald-800 font-bold ml-2"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+
+                {/* Quick Shortcuts Bar (Forfaits les plus fréquents en 1 clic) */}
+                <div className="p-2 bg-slate-100/70 rounded-lg border border-slate-200">
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs">
+                    <span className="text-[11px] font-bold text-slate-500 shrink-0 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-amber-500" />
+                      Raccourcis rapides :
+                    </span>
+                    {catalogItems.slice(0, 5).map((cat) => (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => handleInsertShortcut(cat)}
+                        className="shrink-0 flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-md border border-slate-200 bg-white hover:bg-sky-50 hover:border-sky-300 hover:text-sky-800 transition-colors text-slate-700 font-medium shadow-2xs group"
+                        title={`Insérer « ${cat.description} » (${cat.unitPriceHT} € HT)`}
                       >
-                        <option value="main_oeuvre">M.O</option>
-                        <option value="piece">Pièce</option>
-                        <option value="forfait">Forfait</option>
-                        <option value="autre">Autre</option>
-                      </select>
+                        <Plus className="w-3 h-3 text-sky-600 group-hover:scale-110" />
+                        <span className="truncate max-w-[150px]">{cat.description}</span>
+                        <span className="font-mono font-bold text-[10px] text-slate-500">
+                          {cat.unitPriceHT.toFixed(0)}€
+                        </span>
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setIsCatalogModalOpen(true)}
+                      className="shrink-0 px-2 py-1 text-[11px] font-semibold text-sky-700 hover:underline"
+                    >
+                      + Voir tous ({catalogItems.length})
+                    </button>
+                  </div>
+                </div>
 
-                      <input
-                        type="text"
-                        placeholder="Réf"
-                        value={it.reference}
-                        onChange={(e) => {
-                          const updated = [...items];
-                          updated[idx].reference = e.target.value;
-                          setItems(updated);
-                        }}
-                        className="w-20 border border-slate-300 rounded p-1.5 text-xs font-mono"
-                      />
+                {/* Table of items */}
+                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                  {items.map((it, idx) => (
+                    <div
+                      key={idx}
+                      className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 space-y-2 hover:border-slate-300 transition-colors"
+                    >
+                      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+                        {/* Selector to pick a shortcut directly into this row */}
+                        <select
+                          onChange={(e) => {
+                            const found = catalogItems.find((c) => c.id === e.target.value);
+                            if (found) {
+                              const updated = [...items];
+                              updated[idx] = {
+                                type: found.type,
+                                reference: found.reference,
+                                description: found.description,
+                                quantity: found.defaultQuantity || 1,
+                                unitPriceHT: found.unitPriceHT,
+                                discountPercent: 0,
+                                tvaRate: found.tvaRate,
+                              };
+                              setItems(updated);
+                            }
+                          }}
+                          defaultValue=""
+                          className="w-36 border border-sky-300 bg-sky-50/50 text-sky-900 rounded p-1.5 text-[11px] font-semibold"
+                        >
+                          <option value="">⚡ Remplir via raccourci...</option>
+                          {catalogItems.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.reference ? `[${c.reference}] ` : ''}{c.description.slice(0, 30)} ({c.unitPriceHT}€)
+                            </option>
+                          ))}
+                        </select>
 
-                      <input
-                        type="text"
-                        placeholder="Désignation de la pièce ou intervention"
-                        value={it.description}
-                        required
-                        onChange={(e) => {
-                          const updated = [...items];
-                          updated[idx].description = e.target.value;
-                          setItems(updated);
-                        }}
-                        className="flex-1 min-w-[160px] border border-slate-300 rounded p-1.5 text-xs"
-                      />
-
-                      <input
-                        type="number"
-                        min="0.1"
-                        step="0.1"
-                        placeholder="Qté"
-                        value={it.quantity}
-                        onChange={(e) => {
-                          const updated = [...items];
-                          updated[idx].quantity = Number(e.target.value);
-                          setItems(updated);
-                        }}
-                        className="w-14 border border-slate-300 rounded p-1.5 text-xs text-right tabular-nums"
-                      />
-
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          step="0.01"
-                          placeholder="P.U. HT"
-                          value={it.unitPriceHT}
+                        <select
+                          value={it.type}
                           onChange={(e) => {
                             const updated = [...items];
-                            updated[idx].unitPriceHT = Number(e.target.value);
+                            updated[idx].type = e.target.value as any;
                             setItems(updated);
                           }}
-                          className="w-18 border border-slate-300 rounded p-1.5 text-xs text-right tabular-nums font-mono"
+                          className="w-22 border border-slate-300 rounded p-1.5 text-xs bg-white font-medium"
+                        >
+                          <option value="main_oeuvre">M.O</option>
+                          <option value="piece">Pièce</option>
+                          <option value="forfait">Forfait</option>
+                          <option value="autre">Autre</option>
+                        </select>
+
+                        <input
+                          type="text"
+                          placeholder="Réf"
+                          value={it.reference}
+                          onChange={(e) => {
+                            const updated = [...items];
+                            updated[idx].reference = e.target.value;
+                            setItems(updated);
+                          }}
+                          className="w-20 border border-slate-300 rounded p-1.5 text-xs font-mono"
                         />
-                        <span className="text-[11px] text-slate-400">€</span>
+
+                        <input
+                          type="text"
+                          placeholder="Désignation de la pièce ou intervention"
+                          value={it.description}
+                          required
+                          onChange={(e) => {
+                            const updated = [...items];
+                            updated[idx].description = e.target.value;
+                            setItems(updated);
+                          }}
+                          className="flex-1 min-w-[170px] border border-slate-300 rounded p-1.5 text-xs font-medium bg-white"
+                        />
                       </div>
 
-                      <select
-                        value={it.tvaRate}
-                        onChange={(e) => {
-                          const updated = [...items];
-                          updated[idx].tvaRate = Number(e.target.value);
-                          setItems(updated);
-                        }}
-                        className="w-16 border border-slate-300 rounded p-1.5 text-xs bg-white"
-                      >
-                        <option value={20}>20%</option>
-                        <option value={10}>10%</option>
-                        <option value={5.5}>5.5%</option>
-                        <option value={0}>0%</option>
-                      </select>
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-200/60 text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
+                            <span className="text-[11px] text-slate-500">Qté :</span>
+                            <input
+                              type="number"
+                              min="0.1"
+                              step="0.1"
+                              value={it.quantity}
+                              onChange={(e) => {
+                                const updated = [...items];
+                                updated[idx].quantity = Number(e.target.value);
+                                setItems(updated);
+                              }}
+                              className="w-14 border border-slate-300 rounded p-1 text-xs text-right tabular-nums bg-white"
+                            />
+                          </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveItem(idx)}
-                        className="text-slate-400 hover:text-rose-600 p-1"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[11px] text-slate-500">P.U. HT :</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={it.unitPriceHT}
+                              onChange={(e) => {
+                                const updated = [...items];
+                                updated[idx].unitPriceHT = Number(e.target.value);
+                                setItems(updated);
+                              }}
+                              className="w-20 border border-slate-300 rounded p-1 text-xs text-right tabular-nums font-mono font-bold text-slate-900 bg-white"
+                            />
+                            <span className="text-[11px] text-slate-400">€</span>
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            <span className="text-[11px] text-slate-500">TVA :</span>
+                            <select
+                              value={it.tvaRate}
+                              onChange={(e) => {
+                                const updated = [...items];
+                                updated[idx].tvaRate = Number(e.target.value);
+                                setItems(updated);
+                              }}
+                              className="w-16 border border-slate-300 rounded p-1 text-xs bg-white"
+                            >
+                              <option value={20}>20%</option>
+                              <option value={10}>10%</option>
+                              <option value={5.5}>5.5%</option>
+                              <option value={0}>0%</option>
+                            </select>
+                          </div>
+
+                          <span className="text-[11px] font-mono text-slate-600 pl-2">
+                            Total HT : <strong className="text-slate-900">{(it.quantity * it.unitPriceHT).toFixed(2)} €</strong>
+                          </span>
+                        </div>
+
+                        {/* Actions for this row: Save as shortcut & Delete */}
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleSaveLineAsShortcut(it)}
+                            className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded transition-colors"
+                            title="Enregistrer cette prestation dans vos raccourcis permanents"
+                          >
+                            <BookmarkPlus className="w-3 h-3 text-amber-600" />
+                            <span className="hidden sm:inline">Sauvegarder en raccourci</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(idx)}
+                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                            title="Supprimer cette ligne"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -644,6 +838,16 @@ export const DocumentsTab: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Modal complète de gestion des raccourcis & forfaits catalogue */}
+      <CatalogShortcutsModal
+        isOpen={isCatalogModalOpen}
+        onClose={() => setIsCatalogModalOpen(false)}
+        onSelectItem={(item) => {
+          handleInsertShortcut(item);
+          setIsCatalogModalOpen(false);
+        }}
+      />
     </div>
   );
 };

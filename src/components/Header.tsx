@@ -42,7 +42,7 @@ export const Header: React.FC = () => {
 
   return (
     <header
-      className="h-16 px-6 border-b flex items-center justify-between gap-4 sticky top-0 z-30 shadow-2xs transition-colors"
+      className="min-h-16 h-18 px-6 border-b flex items-center justify-between gap-4 sticky top-0 z-30 shadow-2xs transition-colors"
       style={{
         backgroundColor: theme.headerBgColor || '#ffffff',
         color: theme.headerTextColor || '#0f172a',
@@ -50,29 +50,43 @@ export const Header: React.FC = () => {
       }}
     >
       {/* Zone 1: Brand & Context Breadcrumb */}
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-center gap-3.5 min-w-0">
         <div
           onClick={() => setIsGarageModalOpen(true)}
-          className="flex items-center gap-2 cursor-pointer group"
-          title="Modifier le logo et l'identité du garage"
+          className="flex items-center gap-3 cursor-pointer group p-1 -m-1 rounded-lg hover:bg-slate-100/70 transition-all"
+          title="Modifier le logo et l'identité du garage (redimensionnable)"
         >
           {garage.logoUrl ? (
             <img
               src={garage.logoUrl}
               alt="Logo garage"
-              className="w-8 h-8 object-contain rounded-md border border-slate-200 p-0.5 group-hover:border-slate-400 transition-colors"
+              className="object-contain rounded-lg border border-slate-200/80 p-1 group-hover:border-slate-400 group-hover:scale-105 transition-all bg-white shrink-0 shadow-xs"
+              style={{
+                height: `${Math.min(Math.max((garage.logoSize || 140) * 0.46, 44), 62)}px`,
+                maxWidth: '200px',
+                width: 'auto',
+              }}
             />
           ) : (
             <div
-              className="w-8 h-8 rounded-md flex items-center justify-center text-white font-black text-xs"
-              style={{ backgroundColor: theme.primaryColor }}
+              className="rounded-lg flex items-center justify-center text-white font-black text-sm shrink-0 shadow-xs"
+              style={{
+                backgroundColor: theme.primaryColor,
+                height: `${Math.min(Math.max((garage.logoSize || 140) * 0.46, 44), 62)}px`,
+                width: `${Math.min(Math.max((garage.logoSize || 140) * 0.46, 44), 62)}px`,
+              }}
             >
               AP
             </div>
           )}
-          <span className="font-extrabold text-slate-900 text-sm tracking-tight hidden sm:inline">
-            {garage.name}
-          </span>
+          <div className="hidden sm:block leading-tight">
+            <span className="font-black text-slate-900 text-sm tracking-tight block">
+              {garage.name}
+            </span>
+            <span className="text-[10px] text-slate-400 font-medium">
+              Atelier automobile
+            </span>
+          </div>
         </div>
 
         <span className="text-slate-300 hidden sm:inline">/</span>

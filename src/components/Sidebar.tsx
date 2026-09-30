@@ -82,18 +82,26 @@ export const Sidebar: React.FC = () => {
         <div
           onClick={() => setIsGarageModalOpen(true)}
           className="flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all hover:ring-1 hover:ring-white/20 hover:bg-white/5"
-          title="Modifier le logo et les coordonnées du garage"
+          title="Modifier le logo et les coordonnées du garage (cliquez pour redimensionner)"
         >
           {garage.logoUrl ? (
             <img
               src={garage.logoUrl}
               alt={garage.name}
-              className="w-10 h-10 object-contain rounded-lg shrink-0 bg-white p-1 border border-slate-200 shadow-xs"
+              className="object-contain rounded-lg shrink-0 bg-white p-1 border border-slate-200 shadow-xs transition-all hover:scale-105"
+              style={{
+                width: `${Math.min(Math.max((garage.logoSize || 140) * 0.45, 44), 66)}px`,
+                height: `${Math.min(Math.max((garage.logoSize || 140) * 0.45, 44), 66)}px`,
+              }}
             />
           ) : (
             <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center font-black text-white shrink-0 shadow-xs text-sm"
-              style={{ backgroundColor: theme.primaryColor }}
+              className="rounded-lg flex items-center justify-center font-black text-white shrink-0 shadow-xs text-sm"
+              style={{
+                backgroundColor: theme.primaryColor,
+                width: `${Math.min(Math.max((garage.logoSize || 140) * 0.45, 44), 66)}px`,
+                height: `${Math.min(Math.max((garage.logoSize || 140) * 0.45, 44), 66)}px`,
+              }}
             >
               AP
             </div>

@@ -101,8 +101,14 @@ export const GarageSettingsModal: React.FC = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row items-center gap-6">
-              {/* Logo Box */}
-              <div className="w-28 h-28 rounded-xl border-2 border-dashed border-slate-300 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-xs relative group">
+              {/* Logo Box avec taille dynamique et aperçu en temps réel */}
+              <div
+                className="rounded-xl border-2 border-dashed border-slate-300 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-xs relative group transition-all"
+                style={{
+                  width: `${Math.min(Math.max(formData.logoSize || 140, 100), 220)}px`,
+                  height: `${Math.min(Math.max(formData.logoSize || 140, 100), 220)}px`,
+                }}
+              >
                 {logoPreview ? (
                   <img
                     src={logoPreview}
@@ -130,7 +136,7 @@ export const GarageSettingsModal: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800 transition-colors shadow-2xs"
                   >
                     <Upload className="w-3.5 h-3.5" />
                     <span>Téléverser votre logo (PNG, JPG, SVG)</span>
@@ -143,8 +149,71 @@ export const GarageSettingsModal: React.FC = () => {
                     }}
                     className="px-3 py-2 text-xs border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors"
                   >
-                    Logo Garage Standard
+                    Logo Standard
                   </button>
+                </div>
+
+                {/* Logo Resizer Slider & Numeric Input (Plus gros et redimensionnable à volonté) */}
+                <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-2.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                      <span>Taille du logo :</span>
+                      <span className="font-mono text-sky-700 text-sm font-black">
+                        {formData.logoSize || 140} px
+                      </span>
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <label className="text-[11px] text-slate-500">Précis :</label>
+                      <input
+                        type="number"
+                        min="50"
+                        max="320"
+                        step="5"
+                        value={formData.logoSize || 140}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            logoSize: Math.max(50, Math.min(320, Number(e.target.value) || 140)),
+                          })
+                        }
+                        className="w-16 px-1.5 py-0.5 border border-slate-300 rounded text-right font-mono text-xs tabular-nums"
+                      />
+                      <span className="text-[11px] text-slate-400">px</span>
+                    </div>
+                  </div>
+
+                  <input
+                    type="range"
+                    min="50"
+                    max="320"
+                    step="5"
+                    value={formData.logoSize || 140}
+                    onChange={(e) => setFormData({ ...formData, logoSize: Number(e.target.value) })}
+                    className="w-full cursor-pointer accent-sky-600"
+                  />
+
+                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                    {[
+                      { label: 'Normal (100px)', size: 100 },
+                      { label: 'Grand (140px)', size: 140 },
+                      { label: 'Très Grand (180px)', size: 180 },
+                      { label: 'XXL (220px)', size: 220 },
+                      { label: 'Bannière Max (280px)', size: 280 },
+                    ].map((sz) => (
+                      <button
+                        key={sz.size}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, logoSize: sz.size })}
+                        className={`px-2.5 py-1 text-[10px] rounded font-medium border transition-colors ${
+                          (formData.logoSize || 140) === sz.size
+                            ? 'bg-sky-50 border-sky-400 text-sky-800 font-bold'
+                            : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        {sz.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Preset Options */}

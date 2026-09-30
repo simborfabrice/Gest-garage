@@ -21,6 +21,7 @@ export const CashRegisterTab: React.FC = () => {
   const {
     cashTransactions,
     addCashTransaction,
+    deleteCashTransaction,
     dayCloses,
     addDayClose,
     documents,
@@ -35,6 +36,11 @@ export const CashRegisterTab: React.FC = () => {
   const [isCloseDayModalOpen, setIsCloseDayModalOpen] = useState(false);
   const [printedReceipt, setPrintedReceipt] = useState<CashTransaction | null>(null);
   const [printedZClose, setPrintedZClose] = useState<CashDayClose | null>(null);
+
+  // Search & Filter for transactions journal
+  const [searchTxQuery, setSearchTxQuery] = useState('');
+  const [filterTxType, setFilterTxType] = useState<string>('all');
+  const [txFeedback, setTxFeedback] = useState<string | null>(null);
 
   // Quick Sale / Checkout Form
   const [checkoutType, setCheckoutType] = useState<'facture' | 'directe'>('facture');
@@ -275,16 +281,76 @@ export const CashRegisterTab: React.FC = () => {
         </div>
       </div>
 
-      {/* Transactions Journal of the Day */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <Receipt className="w-4 h-4 text-slate-600" />
-            <span>Journal des Mouvements de Caisse d’Aujourd’hui</span>
-          </h3>
-          <span className="text-xs text-slate-500">
-            {todayTransactions.length} opération(s) enregistrée(s)
-          </span>
+      {/* Transactions Journal of the Day with Option de Suppression des Lignes */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden space-y-0">
+        <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <Receipt className="w-4 h-4 text-slate-600" />
+              <span>Journal des Mouvements de Caisse d’Aujourd’hui</span>
+            </h3>
+            <p className="text-[11px] text-slate-500">
+              Historique des opérations de la journée avec option de suppression de ligne et mise à jour en temps réel du solde.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-slate-600 bg-white px-2.5 py-1 rounded-md border border-slate-200">
+              {todayTransactions.length} opération(s)
+            </span>
+          </div>
+        </div>
+
+        {/* Feedback alert after deletion or action */}
+        {txFeedback && (
+          <div className="mx-4 my-3 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-lg flex items-center justify-between animate-fadeIn">
+            <span className="font-semibold flex items-center gap-1.5">
+              <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+              {txFeedback}
+            </span>
+            <button
+              onClick={() => setTxFeedback(null)}
+              className="text-emerald-600 hover:text-emerald-800 font-bold ml-2 text-sm"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
+        {/* Toolbar: Search & Filter */}
+        <div className="p-3 border-b border-slate-200 bg-white flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs">
+          <div className="relative flex-1 sm:max-w-xs">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+            <input
+              type="text"
+              value={searchTxQuery}
+              onChange={(e) => setSearchTxQuery(e.target.value)}
+              placeholder="Rechercher une opération, libellé, montant..."
+              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:border-sky-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5 overflow-x-auto">
+            {[
+              { id: 'all', label: 'Toutes les opérations' },
+              { id: 'encaissement_facture', label: 'Factures' },
+              { id: 'vente_directe', label: 'Ventes Comptoir' },
+              { id: 'apport_caisse', label: 'Apports' },
+              { id: 'retrait_caisse', label: 'Sorties / Décaissements' },
+            ].map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setFilterTxType(f.id)}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-colors ${
+                  filterTxType === f.id
+                    ? 'bg-slate-900 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -296,70 +362,117 @@ export const CashRegisterTab: React.FC = () => {
                 <th className="py-2.5 px-4">Libellé de l’opération</th>
                 <th className="py-2.5 px-4">Règlement</th>
                 <th className="py-2.5 px-4 text-right">Montant</th>
-                <th className="py-2.5 px-4 text-right">Ticket</th>
+                <th className="py-2.5 px-4 text-center">Option Suppression & Reçu</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {todayTransactions.length === 0 ? (
+              {todayTransactions
+                .filter((tx) => {
+                  if (filterTxType !== 'all' && tx.type !== filterTxType) return false;
+                  if (!searchTxQuery) return true;
+                  const q = searchTxQuery.toLowerCase();
+                  return (
+                    tx.label.toLowerCase().includes(q) ||
+                    tx.paymentMethod.toLowerCase().includes(q) ||
+                    tx.amount.toString().includes(q) ||
+                    (tx.notes && tx.notes.toLowerCase().includes(q))
+                  );
+                })
+                .length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-slate-500">
-                    Aucun encaissement pour l’instant aujourd’hui.
+                    Aucune opération de caisse trouvée pour ces critères.
                   </td>
                 </tr>
               ) : (
-                todayTransactions.map((tx) => {
-                  const isOut = tx.type === 'retrait_caisse';
-                  return (
-                    <tr key={tx.id} className="hover:bg-slate-50/70">
-                      <td className="py-3 px-4 text-slate-500 font-mono text-[11px] tabular-nums">
-                        {new Date(tx.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                      </td>
+                todayTransactions
+                  .filter((tx) => {
+                    if (filterTxType !== 'all' && tx.type !== filterTxType) return false;
+                    if (!searchTxQuery) return true;
+                    const q = searchTxQuery.toLowerCase();
+                    return (
+                      tx.label.toLowerCase().includes(q) ||
+                      tx.paymentMethod.toLowerCase().includes(q) ||
+                      tx.amount.toString().includes(q) ||
+                      (tx.notes && tx.notes.toLowerCase().includes(q))
+                    );
+                  })
+                  .map((tx) => {
+                    const isOut = tx.type === 'retrait_caisse';
+                    return (
+                      <tr key={tx.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-3 px-4 text-slate-500 font-mono text-[11px] tabular-nums">
+                          {new Date(tx.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                        </td>
 
-                      <td className="py-3 px-4 font-semibold">
-                        {tx.type === 'encaissement_facture' ? (
-                          <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[10px]">Facture</span>
-                        ) : tx.type === 'vente_directe' ? (
-                          <span className="text-blue-700 bg-blue-50 px-2 py-0.5 rounded text-[10px]">Vente Comptoir</span>
-                        ) : tx.type === 'apport_caisse' ? (
-                          <span className="text-purple-700 bg-purple-50 px-2 py-0.5 rounded text-[10px]">Apport Caisse</span>
-                        ) : (
-                          <span className="text-rose-700 bg-rose-50 px-2 py-0.5 rounded text-[10px]">Sortie Caisse</span>
-                        )}
-                      </td>
+                        <td className="py-3 px-4 font-semibold">
+                          {tx.type === 'encaissement_facture' ? (
+                            <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-200">Facture</span>
+                          ) : tx.type === 'vente_directe' ? (
+                            <span className="text-blue-700 bg-blue-50 px-2 py-0.5 rounded text-[10px] font-bold border border-blue-200">Vente Comptoir</span>
+                          ) : tx.type === 'apport_caisse' ? (
+                            <span className="text-purple-700 bg-purple-50 px-2 py-0.5 rounded text-[10px] font-bold border border-purple-200">Apport Caisse</span>
+                          ) : (
+                            <span className="text-rose-700 bg-rose-50 px-2 py-0.5 rounded text-[10px] font-bold border border-rose-200">Sortie Caisse</span>
+                          )}
+                        </td>
 
-                      <td className="py-3 px-4 font-medium text-slate-800">
-                        {tx.label}
-                        {tx.notes && <span className="text-slate-400 text-[10px] block font-normal">{tx.notes}</span>}
-                      </td>
+                        <td className="py-3 px-4 font-medium text-slate-800">
+                          {tx.label}
+                          {tx.notes && <span className="text-slate-400 text-[10px] block font-normal">{tx.notes}</span>}
+                        </td>
 
-                      <td className="py-3 px-4">
-                        <span className="capitalize text-slate-600 font-medium">
-                          {tx.paymentMethod === 'especes'
-                            ? 'Espèces'
-                            : tx.paymentMethod === 'carte'
-                            ? 'Carte Bancaire'
-                            : tx.paymentMethod === 'cheque'
-                            ? 'Chèque'
-                            : 'Virement'}
-                        </span>
-                      </td>
+                        <td className="py-3 px-4">
+                          <span className="capitalize text-slate-600 font-medium">
+                            {tx.paymentMethod === 'especes'
+                              ? 'Espèces'
+                              : tx.paymentMethod === 'carte'
+                              ? 'Carte Bancaire'
+                              : tx.paymentMethod === 'cheque'
+                              ? 'Chèque'
+                              : 'Virement'}
+                          </span>
+                        </td>
 
-                      <td className={`py-3 px-4 text-right font-mono font-bold text-sm tabular-nums ${isOut ? 'text-rose-600' : 'text-slate-900'}`}>
-                        {isOut ? '-' : '+'}{tx.amount.toFixed(2)} €
-                      </td>
+                        <td className={`py-3 px-4 text-right font-mono font-bold text-sm tabular-nums ${isOut ? 'text-rose-600' : 'text-slate-900'}`}>
+                          {isOut ? '-' : '+'}{tx.amount.toFixed(2)} €
+                        </td>
 
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => setPrintedReceipt(tx)}
-                          className="p-1 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded"
-                          title="Imprimer le ticket de caisse avec logo"
-                        >
-                          <Printer className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
+                        <td className="py-3 px-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            {/* Bouton d'impression reçu */}
+                            <button
+                              onClick={() => setPrintedReceipt(tx)}
+                              className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+                              title="Imprimer le ticket de caisse avec logo"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Option explicite de suppression de la ligne dans le journal de caisse */}
+                            <button
+                              onClick={() => {
+                                if (
+                                  confirm(
+                                    `Confirmer la suppression de cette ligne d'opération de caisse ?\n\n• Opération : « ${tx.label} »\n• Montant : ${tx.amount.toFixed(2)} € (${tx.paymentMethod})\n\nLe solde de caisse et les totaux seront immédiatement recalculés.`
+                                  )
+                                ) {
+                                  deleteCashTransaction(tx.id);
+                                  setTxFeedback(`Ligne « ${tx.label} » supprimée. Solde de caisse actualisé.`);
+                                  setTimeout(() => setTxFeedback(null), 3500);
+                                }
+                              }}
+                              className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 hover:text-rose-900 border border-rose-200 rounded-md transition-all shadow-2xs group"
+                              title="Supprimer définitivement cette ligne du journal de caisse"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-rose-500 group-hover:scale-110" />
+                              <span>Supprimer</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
               )}
             </tbody>
           </table>

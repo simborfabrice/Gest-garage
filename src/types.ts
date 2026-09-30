@@ -18,6 +18,7 @@ export interface GarageSettings {
   name: string;
   slogan: string;
   logoUrl: string;
+  logoSize: number; // Taille personnalisable du logo en pixels (ex: 50px à 220px, défaut 110px)
   address: string;
   postalCode: string;
   city: string;
@@ -30,6 +31,17 @@ export interface GarageSettings {
   bankIban: string;
   bankBic: string;
   legalNotes: string;
+}
+
+export interface CatalogItem {
+  id: string;
+  type: 'piece' | 'main_oeuvre' | 'forfait' | 'autre';
+  reference: string;
+  description: string;
+  defaultQuantity: number;
+  unitPriceHT: number;
+  tvaRate: number; // 20, 10, 5.5, 0
+  category: string; // e.g. "Freinage", "Entretien & Vidange", "Main d'œuvre", "Distribution", "Pneumatiques", "Diagnostic"
 }
 
 export interface Vehicle {

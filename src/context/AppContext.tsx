@@ -10,6 +10,7 @@ import {
   GarageDocument,
   CashTransaction,
   CashDayClose,
+  CatalogItem,
 } from '../types';
 import { storageService, recalculateDocumentTotals } from '../services/storage';
 
@@ -70,9 +71,16 @@ interface AppContextType {
   convertQuoteToOrder: (quoteId: string) => GarageDocument | null;
   convertOrderToInvoice: (orderId: string) => GarageDocument | null;
 
+  // Catalog Shortcuts & Prestations
+  catalogItems: CatalogItem[];
+  addCatalogItem: (data: Omit<CatalogItem, 'id'>) => CatalogItem;
+  updateCatalogItem: (id: string, data: Partial<CatalogItem>) => void;
+  deleteCatalogItem: (id: string) => void;
+
   // Cash
   cashTransactions: CashTransaction[];
   addCashTransaction: (data: Omit<CashTransaction, 'id' | 'date'>) => CashTransaction;
+  deleteCashTransaction: (id: string) => void;
   dayCloses: CashDayClose[];
   addDayClose: (data: Omit<CashDayClose, 'id' | 'closedAt'>) => CashDayClose;
 
@@ -99,6 +107,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [documents, setDocuments] = useState<GarageDocument[]>(() => storageService.getDocuments());
   const [cashTransactions, setCashTransactions] = useState<CashTransaction[]>(() => storageService.getCashTransactions());
   const [dayCloses, setDayCloses] = useState<CashDayClose[]>(() => storageService.getDayCloses());
+  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>(() => storageService.getCatalogItems());
 
   // Dynamically update CSS root variables when theme changes
   useEffect(() => {
@@ -360,6 +369,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newTx;
   };
 
+  const deleteCashTransaction = (id: string) => {
+    const updated = cashTransactions.filter((tx) => tx.id !== id);
+    setCashTransactions(updated);
+    storageService.saveCashTransactions(updated);
+  };
+
   const addDayClose = (data: Omit<CashDayClose, 'id' | 'closedAt'>): CashDayClose => {
     const newClose: CashDayClose = {
       ...data,
@@ -370,6 +385,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDayCloses(updated);
     storageService.saveDayCloses(updated);
     return newClose;
+  };
+
+  // Catalog item operations
+  const addCatalogItem = (data: Omit<CatalogItem, 'id'>): CatalogItem => {
+    const newItem: CatalogItem = {
+      ...data,
+      id: `cat-${Date.now()}`,
+    };
+    const updated = [...catalogItems, newItem];
+    setCatalogItems(updated);
+    storageService.saveCatalogItems(updated);
+    return newItem;
+  };
+
+  const updateCatalogItem = (id: string, data: Partial<CatalogItem>) => {
+    const updated = catalogItems.map((c) => (c.id === id ? { ...c, ...data } : c));
+    setCatalogItems(updated);
+    storageService.saveCatalogItems(updated);
+  };
+
+  const deleteCatalogItem = (id: string) => {
+    const updated = catalogItems.filter((c) => c.id !== id);
+    setCatalogItems(updated);
+    storageService.saveCatalogItems(updated);
   };
 
   const resetAllData = () => {
@@ -384,6 +423,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDocuments(storageService.getDocuments());
     setCashTransactions(storageService.getCashTransactions());
     setDayCloses(storageService.getDayCloses());
+    setCatalogItems(storageService.getCatalogItems());
   };
 
   return (
@@ -427,8 +467,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteDocument,
         convertQuoteToOrder,
         convertOrderToInvoice,
+        catalogItems,
+        addCatalogItem,
+        updateCatalogItem,
+        deleteCatalogItem,
         cashTransactions,
         addCashTransaction,
+        deleteCashTransaction,
         dayCloses,
         addDayClose,
         resetAllData,

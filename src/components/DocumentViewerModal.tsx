@@ -102,6 +102,30 @@ export const DocumentViewerModal: React.FC = () => {
               </button>
             )}
 
+            {/* Redimensionnement direct du logo sur le document */}
+            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 rounded-lg border border-slate-200 text-xs">
+              <span className="text-slate-600 font-medium text-[11px]">Taille logo :</span>
+              <button
+                type="button"
+                onClick={() => updateGarage({ logoSize: Math.max((garage.logoSize || 140) - 15, 50) })}
+                className="w-6 h-6 flex items-center justify-center bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold text-slate-700 shadow-2xs"
+                title="Diminuer la taille du logo"
+              >
+                -
+              </button>
+              <span className="font-mono font-bold text-slate-800 text-[11px] w-12 text-center tabular-nums">
+                {garage.logoSize || 140}px
+              </span>
+              <button
+                type="button"
+                onClick={() => updateGarage({ logoSize: Math.min((garage.logoSize || 140) + 15, 320) })}
+                className="w-6 h-6 flex items-center justify-center bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold text-slate-700 shadow-2xs"
+                title="Agrandir la taille du logo"
+              >
+                +
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={handlePrint}
@@ -135,11 +159,22 @@ export const DocumentViewerModal: React.FC = () => {
                   <img
                     src={garage.logoUrl}
                     alt={garage.name}
-                    className="w-20 h-20 sm:w-24 sm:h-24 object-contain rounded-lg shrink-0 border border-slate-200 p-1"
+                    className="object-contain rounded-lg shrink-0 border border-slate-200 p-1.5 shadow-xs bg-white"
+                    style={{
+                      width: `${garage.logoSize || 140}px`,
+                      maxHeight: `${Math.round((garage.logoSize || 140) * 1.15)}px`,
+                      height: 'auto',
+                    }}
                   />
                 ) : (
-                  <div className="w-20 h-20 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 border border-slate-200 shrink-0">
-                    <FileText className="w-8 h-8" />
+                  <div
+                    className="bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 border border-slate-200 shrink-0"
+                    style={{
+                      width: `${garage.logoSize || 140}px`,
+                      height: `${Math.min(garage.logoSize || 140, 140)}px`,
+                    }}
+                  >
+                    <FileText className="w-10 h-10" />
                   </div>
                 )}
                 <div>
