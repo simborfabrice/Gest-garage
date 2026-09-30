@@ -122,6 +122,23 @@ export interface Appointment {
   notes?: string;
 }
 
+export interface Mechanic {
+  id: string;
+  name: string;
+  role?: string;
+  phone?: string;
+  active?: boolean;
+}
+
+export interface WorkshopBay {
+  id: string;
+  name: string;
+  description?: string;
+  defaultMechanic?: string;
+  color?: string;
+  active?: boolean;
+}
+
 export type DocumentType = 'devis' | 'bon_commande' | 'facture';
 
 export type DocumentStatus =

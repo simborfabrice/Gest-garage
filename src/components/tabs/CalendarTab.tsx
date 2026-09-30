@@ -20,9 +20,14 @@ import {
   Table as TableIcon,
   LayoutGrid,
   List,
+  Edit3,
+  Users,
+  Check,
+  Settings,
 } from 'lucide-react';
 import { Appointment } from '../../types';
 import { formatDate, formatDateLong, formatDateFull } from '../../utils/dateUtils';
+import { WorkshopConfigModal } from '../WorkshopConfigModal';
 
 export const CalendarTab: React.FC = () => {
   const {
@@ -30,6 +35,8 @@ export const CalendarTab: React.FC = () => {
     addAppointment,
     updateAppointment,
     deleteAppointment,
+    mechanics,
+    workshopBays,
     clients,
     vehicles,
     theme,
@@ -52,7 +59,14 @@ export const CalendarTab: React.FC = () => {
   const [mechanicFilter, setMechanicFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  // Modal
+  // Workshop config modal (Mechanics & Bays manager)
+  const [isWorkshopConfigModalOpen, setIsWorkshopConfigModalOpen] = useState(false);
+  const [workshopConfigTab, setWorkshopConfigTab] = useState<'mechanics' | 'bays'>('mechanics');
+
+  // Edit existing appointment modal state
+  const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+
+  // Modal for new appointment
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // New appointment form state
@@ -62,8 +76,8 @@ export const CalendarTab: React.FC = () => {
   const [newStartTime, setNewStartTime] = useState('09:00');
   const [newDuration, setNewDuration] = useState(60);
   const [newServiceType, setNewServiceType] = useState('Révision générale & Vidange');
-  const [newMechanic, setNewMechanic] = useState('Fabrice');
-  const [newBay, setNewBay] = useState('Pont 1');
+  const [newMechanic, setNewMechanic] = useState(mechanics[0]?.name || 'Fabrice');
+  const [newBay, setNewBay] = useState(workshopBays[0]?.name || 'Pont 1');
   const [newNotes, setNewNotes] = useState('');
 
   const clientVehicles = vehicles.filter((v) => v.clientId === newClientId);
@@ -296,6 +310,19 @@ export const CalendarTab: React.FC = () => {
             </button>
           </div>
 
+          {/* Workshop Config (Mechanics & Bays) Button */}
+          <button
+            onClick={() => {
+              setWorkshopConfigTab('mechanics');
+              setIsWorkshopConfigModalOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 rounded-lg shadow-xs transition-colors"
+            title="Gérer les mécaniciens et les emplacements de l'atelier"
+          >
+            <Wrench className="w-3.5 h-3.5 text-sky-600" />
+            <span>Gérer Baies & Mécaniciens</span>
+          </button>
+
           {/* New Appointment Button */}
           <button
             onClick={() => {
@@ -313,30 +340,55 @@ export const CalendarTab: React.FC = () => {
 
       {/* Workshop Bays / Mechanics Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { bay: 'Pont 1 (Mécanique lourde)', mechanic: 'Fabrice', appointmentsMonth: appointments.filter((a) => a.bay.includes('Pont 1') && a.date.startsWith(`${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`)).length },
-          { bay: 'Pont 2 (Géométrie & Pneus)', mechanic: 'Thomas', appointmentsMonth: appointments.filter((a) => a.bay.includes('Pont 2') && a.date.startsWith(`${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`)).length },
-          { bay: 'Baie Diagnostic OBD', mechanic: 'Julien', appointmentsMonth: appointments.filter((a) => a.bay.includes('Diagnostic') && a.date.startsWith(`${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`)).length },
-          { bay: 'Atelier Entretien Rapide', mechanic: 'Équipe', appointmentsMonth: appointments.filter((a) => a.bay.includes('Atelier') && a.date.startsWith(`${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`)).length },
-        ].map((item, idx) => (
-          <div
-            key={idx}
-            className="p-3.5 rounded-xl border shadow-xs space-y-1.5"
-            style={{
-              backgroundColor: theme.cardBgColor || '#ffffff',
-              borderColor: theme.cardBorderColor || '#e2e8f0',
-            }}
-          >
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-slate-800 truncate">{item.bay}</span>
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+        {workshopBays.map((bay) => {
+          const appointmentsMonth = appointments.filter(
+            (a) =>
+              (a.bay === bay.name || a.bay.includes(bay.name)) &&
+              a.date.startsWith(`${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`)
+          ).length;
+          const assignedMechanic = bay.defaultMechanic || 'Équipe';
+
+          return (
+            <div
+              key={bay.id}
+              className="p-3.5 rounded-xl border shadow-xs space-y-1.5 transition-all hover:border-slate-300"
+              style={{
+                backgroundColor: theme.cardBgColor || '#ffffff',
+                borderColor: theme.cardBorderColor || '#e2e8f0',
+              }}
+            >
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-slate-800 truncate" title={bay.name}>
+                  {bay.name}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => {
+                      setWorkshopConfigTab('bays');
+                      setIsWorkshopConfigModalOpen(true);
+                    }}
+                    className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                    title="Modifier cet emplacement"
+                  >
+                    <Edit3 className="w-3 h-3" />
+                  </button>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                </div>
+              </div>
+              <div className="text-[11px] text-slate-400 truncate">
+                {bay.description || 'Emplacement atelier'}
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+                <span>
+                  Opérateur : <strong className="text-slate-700">{assignedMechanic}</strong>
+                </span>
+                <span className="font-mono font-bold text-sky-700">
+                  {appointmentsMonth} RDV ce mois
+                </span>
+              </div>
             </div>
-            <div className="flex items-center justify-between text-[11px] text-slate-500">
-              <span>Opérateur : <strong className="text-slate-700">{item.mechanic}</strong></span>
-              <span className="font-mono font-bold text-sky-700">{item.appointmentsMonth} RDV ce mois</span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Filter Row */}
@@ -347,12 +399,14 @@ export const CalendarTab: React.FC = () => {
           <select
             value={mechanicFilter}
             onChange={(e) => setMechanicFilter(e.target.value)}
-            className="border border-slate-300 rounded px-2 py-1 bg-white text-slate-700"
+            className="border border-slate-300 rounded px-2.5 py-1 bg-white text-slate-700 text-xs"
           >
-            <option value="all">Tous les mécaniciens</option>
-            <option value="Fabrice">Fabrice</option>
-            <option value="Thomas">Thomas</option>
-            <option value="Julien">Julien</option>
+            <option value="all">Tous les mécaniciens ({mechanics.length})</option>
+            {mechanics.map((m) => (
+              <option key={m.id} value={m.name}>
+                {m.name} ({m.role || 'Mécanicien'})
+              </option>
+            ))}
           </select>
 
           <span className="text-slate-500 font-medium ml-2">Statut :</span>
@@ -558,9 +612,11 @@ export const CalendarTab: React.FC = () => {
                 <tr>
                   <th className="py-2.5 px-4 w-36">Jour / Date</th>
                   <th className="py-2.5 px-4 w-28">Charge Atelier</th>
-                  <th className="py-2.5 px-4">Pont 1 (Mécanique)</th>
-                  <th className="py-2.5 px-4">Pont 2 (Géométrie)</th>
-                  <th className="py-2.5 px-4">Baie Diagnostic & Rapide</th>
+                  {workshopBays.slice(0, 3).map((bay) => (
+                    <th key={bay.id} className="py-2.5 px-4 truncate max-w-44">
+                      {bay.name}
+                    </th>
+                  ))}
                   <th className="py-2.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -570,10 +626,6 @@ export const CalendarTab: React.FC = () => {
                   const dateStr = formatDayDate(dayNum);
                   const dayApts = getAppointmentsForDay(dateStr);
                   const isToday = dateStr === '2026-09-30';
-
-                  const pont1Apts = dayApts.filter((a) => a.bay.includes('Pont 1'));
-                  const pont2Apts = dayApts.filter((a) => a.bay.includes('Pont 2'));
-                  const diagApts = dayApts.filter((a) => a.bay.includes('Diagnostic') || a.bay.includes('Atelier'));
 
                   return (
                     <tr
@@ -615,50 +667,27 @@ export const CalendarTab: React.FC = () => {
                         )}
                       </td>
 
-                      {/* Pont 1 */}
-                      <td className="py-2.5 px-4">
-                        {pont1Apts.length === 0 ? (
-                          <span className="text-slate-300 text-[11px]">—</span>
-                        ) : (
-                          <div className="space-y-1">
-                            {pont1Apts.map((a) => (
-                              <div key={a.id} className="text-[11px]">
-                                <strong className="text-slate-800">{a.startTime}</strong> : {a.serviceType} ({a.mechanic})
+                      {/* Dynamic Bays Columns */}
+                      {workshopBays.slice(0, 3).map((bay) => {
+                        const bayApts = dayApts.filter(
+                          (a) => a.bay === bay.name || a.bay.includes(bay.name)
+                        );
+                        return (
+                          <td key={bay.id} className="py-2.5 px-4">
+                            {bayApts.length === 0 ? (
+                              <span className="text-slate-300 text-[11px]">—</span>
+                            ) : (
+                              <div className="space-y-1">
+                                {bayApts.map((a) => (
+                                  <div key={a.id} className="text-[11px]">
+                                    <strong className="text-slate-800">{a.startTime}</strong> : {a.serviceType} ({a.mechanic})
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Pont 2 */}
-                      <td className="py-2.5 px-4">
-                        {pont2Apts.length === 0 ? (
-                          <span className="text-slate-300 text-[11px]">—</span>
-                        ) : (
-                          <div className="space-y-1">
-                            {pont2Apts.map((a) => (
-                              <div key={a.id} className="text-[11px]">
-                                <strong className="text-slate-800">{a.startTime}</strong> : {a.serviceType} ({a.mechanic})
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Baie Diag */}
-                      <td className="py-2.5 px-4">
-                        {diagApts.length === 0 ? (
-                          <span className="text-slate-300 text-[11px]">—</span>
-                        ) : (
-                          <div className="space-y-1">
-                            {diagApts.map((a) => (
-                              <div key={a.id} className="text-[11px]">
-                                <strong className="text-slate-800">{a.startTime}</strong> : {a.serviceType} ({a.mechanic})
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </td>
+                            )}
+                          </td>
+                        );
+                      })}
 
                       <td className="py-2.5 px-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
@@ -782,10 +811,46 @@ export const CalendarTab: React.FC = () => {
                           </span>
                           {getStatusBadge(apt.status)}
                         </div>
-                        <div className="text-slate-500 text-[11px] space-x-2">
-                          <span>Emplacement : <strong>{apt.bay}</strong></span>
-                          <span>·</span>
-                          <span>Mécanicien : <strong>{apt.mechanic}</strong></span>
+                        <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] text-slate-500">
+                          {/* Quick Bay Selector */}
+                          <div className="flex items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded-md shadow-2xs hover:border-slate-300">
+                            <span className="text-slate-400 font-medium">Emplacement :</span>
+                            <select
+                              value={apt.bay}
+                              onChange={(e) => updateAppointment(apt.id, { bay: e.target.value })}
+                              className="bg-transparent font-bold text-slate-800 hover:text-sky-600 focus:outline-hidden cursor-pointer"
+                              title="Changer rapidement d'emplacement / baie"
+                            >
+                              {workshopBays.map((b) => (
+                                <option key={b.id} value={b.name}>
+                                  {b.name}
+                                </option>
+                              ))}
+                              {!workshopBays.some((b) => b.name === apt.bay) && (
+                                <option value={apt.bay}>{apt.bay}</option>
+                              )}
+                            </select>
+                          </div>
+
+                          {/* Quick Mechanic Selector */}
+                          <div className="flex items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded-md shadow-2xs hover:border-slate-300">
+                            <span className="text-slate-400 font-medium">Mécanicien :</span>
+                            <select
+                              value={apt.mechanic}
+                              onChange={(e) => updateAppointment(apt.id, { mechanic: e.target.value })}
+                              className="bg-transparent font-bold text-slate-800 hover:text-sky-600 focus:outline-hidden cursor-pointer"
+                              title="Changer rapidement de mécanicien assigné"
+                            >
+                              {mechanics.map((m) => (
+                                <option key={m.id} value={m.name}>
+                                  {m.name}
+                                </option>
+                              ))}
+                              {!mechanics.some((m) => m.name === apt.mechanic) && (
+                                <option value={apt.mechanic}>{apt.mechanic}</option>
+                              )}
+                            </select>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -811,6 +876,14 @@ export const CalendarTab: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setEditingAppointment(apt)}
+                        className="flex items-center gap-1 px-2.5 py-1.5 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded font-semibold text-[11px] transition-colors"
+                        title="Modifier tous les détails du rendez-vous"
+                      >
+                        <Edit3 className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Modifier</span>
+                      </button>
                       <button
                         onClick={() => handleGenerateDocument(apt, 'devis')}
                         className="px-2.5 py-1.5 border border-slate-300 hover:bg-slate-100 rounded font-semibold text-[11px]"
@@ -961,29 +1034,58 @@ export const CalendarTab: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Mécanicien assigné</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-semibold text-slate-700">Mécanicien assigné</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setWorkshopConfigTab('mechanics');
+                        setIsWorkshopConfigModalOpen(true);
+                      }}
+                      className="text-[11px] text-sky-600 hover:text-sky-800 hover:underline flex items-center gap-0.5"
+                    >
+                      <Wrench className="w-3 h-3" />
+                      <span>Gérer l'équipe</span>
+                    </button>
+                  </div>
                   <select
                     value={newMechanic}
                     onChange={(e) => setNewMechanic(e.target.value)}
                     className="w-full border border-slate-300 rounded-lg p-2 text-xs"
                   >
-                    <option value="Fabrice">Fabrice (Chef d'atelier)</option>
-                    <option value="Thomas">Thomas (Mécanicien)</option>
-                    <option value="Julien">Julien (Apprenti mécanicien)</option>
+                    {mechanics.map((m) => (
+                      <option key={m.id} value={m.name}>
+                        {m.name} ({m.role || 'Mécanicien'})
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="font-semibold text-slate-700 block mb-1">Emplacement / Baie</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-semibold text-slate-700">Emplacement / Baie</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setWorkshopConfigTab('bays');
+                        setIsWorkshopConfigModalOpen(true);
+                      }}
+                      className="text-[11px] text-amber-600 hover:text-amber-800 hover:underline flex items-center gap-0.5"
+                    >
+                      <Layers className="w-3 h-3" />
+                      <span>Gérer les baies</span>
+                    </button>
+                  </div>
                   <select
                     value={newBay}
                     onChange={(e) => setNewBay(e.target.value)}
                     className="w-full border border-slate-300 rounded-lg p-2 text-xs"
                   >
-                    <option value="Pont 1">Pont 1 (Mécanique lourde)</option>
-                    <option value="Pont 2">Pont 2 (Géométrie / Pneus)</option>
-                    <option value="Baie Diagnostic">Baie Diagnostic OBD</option>
-                    <option value="Atelier Général">Atelier Général / Préparation</option>
+                    {workshopBays.map((b) => (
+                      <option key={b.id} value={b.name}>
+                        {b.name} ({b.description || 'Atelier'})
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -1019,6 +1121,238 @@ export const CalendarTab: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Edit Appointment Modal */}
+      {editingAppointment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="relative w-full max-w-xl bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden my-8">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-sky-600" />
+                <span>Modifier le Rendez-vous Atelier</span>
+              </h3>
+              <button
+                onClick={() => setEditingAppointment(null)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                updateAppointment(editingAppointment.id, {
+                  serviceType: editingAppointment.serviceType,
+                  date: editingAppointment.date,
+                  startTime: editingAppointment.startTime,
+                  durationMinutes: Number(editingAppointment.durationMinutes),
+                  mechanic: editingAppointment.mechanic,
+                  bay: editingAppointment.bay,
+                  status: editingAppointment.status,
+                  notes: editingAppointment.notes,
+                });
+                setEditingAppointment(null);
+              }}
+              className="p-6 space-y-4"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div className="sm:col-span-2">
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Prestation demandée / Motif *
+                  </label>
+                  <input
+                    type="text"
+                    value={editingAppointment.serviceType}
+                    onChange={(e) =>
+                      setEditingAppointment({ ...editingAppointment, serviceType: e.target.value })
+                    }
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Date d'intervention *</label>
+                  <input
+                    type="date"
+                    value={editingAppointment.date}
+                    onChange={(e) =>
+                      setEditingAppointment({ ...editingAppointment, date: e.target.value })
+                    }
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Heure de début *</label>
+                  <input
+                    type="time"
+                    value={editingAppointment.startTime}
+                    onChange={(e) =>
+                      setEditingAppointment({ ...editingAppointment, startTime: e.target.value })
+                    }
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Durée estimée (minutes)</label>
+                  <select
+                    value={editingAppointment.durationMinutes}
+                    onChange={(e) =>
+                      setEditingAppointment({
+                        ...editingAppointment,
+                        durationMinutes: Number(e.target.value),
+                      })
+                    }
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                  >
+                    <option value={30}>30 min (Express / Contrôle)</option>
+                    <option value={60}>1 heure (Vidange / Filtres)</option>
+                    <option value={90}>1h30 (Freinage / Climatisation)</option>
+                    <option value={120}>2 heures (Pneus + Révision)</option>
+                    <option value={240}>4 heures (Distribution / Embrayage)</option>
+                    <option value={480}>Journée complète (Moteur / Boîte)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Statut de l'intervention</label>
+                  <select
+                    value={editingAppointment.status}
+                    onChange={(e) =>
+                      setEditingAppointment({
+                        ...editingAppointment,
+                        status: e.target.value as any,
+                      })
+                    }
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                  >
+                    <option value="planifie">Planifié</option>
+                    <option value="en_cours">En cours (sur le pont)</option>
+                    <option value="termine">Terminé (prêt à facturer)</option>
+                    <option value="facture">Facturé</option>
+                    <option value="annule">Annulé</option>
+                  </select>
+                </div>
+
+                {/* MODIFIER LE MÉCANICIEN ASSIGNÉ */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-semibold text-slate-700">Mécanicien assigné</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setWorkshopConfigTab('mechanics');
+                        setIsWorkshopConfigModalOpen(true);
+                      }}
+                      className="text-[11px] text-sky-600 hover:text-sky-800 hover:underline flex items-center gap-0.5"
+                    >
+                      <Wrench className="w-3 h-3" />
+                      <span>Gérer l'équipe</span>
+                    </button>
+                  </div>
+                  <select
+                    value={editingAppointment.mechanic}
+                    onChange={(e) =>
+                      setEditingAppointment({ ...editingAppointment, mechanic: e.target.value })
+                    }
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white font-medium"
+                  >
+                    {mechanics.map((m) => (
+                      <option key={m.id} value={m.name}>
+                        {m.name} ({m.role || 'Mécanicien'})
+                      </option>
+                    ))}
+                    {!mechanics.some((m) => m.name === editingAppointment.mechanic) && (
+                      <option value={editingAppointment.mechanic}>
+                        {editingAppointment.mechanic}
+                      </option>
+                    )}
+                  </select>
+                </div>
+
+                {/* MODIFIER L'EMPLACEMENT ET LA BAIE */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-semibold text-slate-700">Emplacement / Baie</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setWorkshopConfigTab('bays');
+                        setIsWorkshopConfigModalOpen(true);
+                      }}
+                      className="text-[11px] text-amber-600 hover:text-amber-800 hover:underline flex items-center gap-0.5"
+                    >
+                      <Layers className="w-3 h-3" />
+                      <span>Gérer les baies</span>
+                    </button>
+                  </div>
+                  <select
+                    value={editingAppointment.bay}
+                    onChange={(e) =>
+                      setEditingAppointment({ ...editingAppointment, bay: e.target.value })
+                    }
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white font-medium"
+                  >
+                    {workshopBays.map((b) => (
+                      <option key={b.id} value={b.name}>
+                        {b.name} ({b.description || 'Atelier'})
+                      </option>
+                    ))}
+                    {!workshopBays.some((b) => b.name === editingAppointment.bay) && (
+                      <option value={editingAppointment.bay}>
+                        {editingAppointment.bay}
+                      </option>
+                    )}
+                  </select>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="font-semibold text-slate-700 block mb-1">Notes & Consignes particulières</label>
+                  <textarea
+                    rows={2}
+                    value={editingAppointment.notes || ''}
+                    onChange={(e) =>
+                      setEditingAppointment({ ...editingAppointment, notes: e.target.value })
+                    }
+                    placeholder="Instructions mécanicien, client sur place..."
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setEditingAppointment(null)}
+                  className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 text-xs"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="flex items-center gap-1.5 px-5 py-2 text-white font-semibold rounded-lg text-xs shadow-xs"
+                  style={{ backgroundColor: theme.primaryColor }}
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Enregistrer les modifications</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Workshop Configuration Modal (Manage Mechanics & Bays) */}
+      <WorkshopConfigModal
+        isOpen={isWorkshopConfigModalOpen}
+        onClose={() => setIsWorkshopConfigModalOpen(false)}
+        initialTab={workshopConfigTab}
+      />
     </div>
   );
 };

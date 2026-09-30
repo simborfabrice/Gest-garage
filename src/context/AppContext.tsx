@@ -12,6 +12,8 @@ import {
   CashDayClose,
   CatalogItem,
   CashRegisterSettings,
+  Mechanic,
+  WorkshopBay,
 } from '../types';
 import { storageService, recalculateDocumentTotals } from '../services/storage';
 
@@ -63,6 +65,17 @@ interface AppContextType {
   addAppointment: (data: Omit<Appointment, 'id'>) => Appointment;
   updateAppointment: (id: string, data: Partial<Appointment>) => void;
   deleteAppointment: (id: string) => void;
+
+  // Workshop mechanics & bays
+  mechanics: Mechanic[];
+  addMechanic: (data: Omit<Mechanic, 'id'>) => Mechanic;
+  updateMechanic: (id: string, data: Partial<Mechanic>, syncAppointments?: boolean) => void;
+  deleteMechanic: (id: string) => void;
+
+  workshopBays: WorkshopBay[];
+  addWorkshopBay: (data: Omit<WorkshopBay, 'id'>) => WorkshopBay;
+  updateWorkshopBay: (id: string, data: Partial<WorkshopBay>, syncAppointments?: boolean) => void;
+  deleteWorkshopBay: (id: string) => void;
 
   // Documents
   documents: GarageDocument[];
@@ -116,6 +129,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [dayCloses, setDayCloses] = useState<CashDayClose[]>(() => storageService.getDayCloses());
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>(() => storageService.getCatalogItems());
   const [cashSettings, setCashSettings] = useState<CashRegisterSettings>(() => storageService.getCashSettings());
+  const [mechanics, setMechanics] = useState<Mechanic[]>(() => storageService.getMechanics());
+  const [workshopBays, setWorkshopBays] = useState<WorkshopBay[]>(() => storageService.getWorkshopBays());
 
   // Dynamically update CSS root variables when theme changes
   useEffect(() => {
@@ -269,6 +284,80 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = appointments.filter((a) => a.id !== id);
     setAppointments(updated);
     storageService.saveAppointments(updated);
+  };
+
+  // Workshop mechanics operations
+  const addMechanic = (data: Omit<Mechanic, 'id'>): Mechanic => {
+    const newMechanic: Mechanic = {
+      ...data,
+      id: `mec-${Date.now()}`,
+      active: data.active ?? true,
+    };
+    const updated = [...mechanics, newMechanic];
+    setMechanics(updated);
+    storageService.saveMechanics(updated);
+    return newMechanic;
+  };
+
+  const updateMechanic = (id: string, data: Partial<Mechanic>, syncAppointments = true) => {
+    const existing = mechanics.find((m) => m.id === id);
+    const updated = mechanics.map((m) => (m.id === id ? { ...m, ...data } : m));
+    setMechanics(updated);
+    storageService.saveMechanics(updated);
+
+    // If the mechanic name changed and syncAppointments is true, update assigned appointments
+    if (existing && data.name && data.name.trim() !== existing.name && syncAppointments) {
+      const oldName = existing.name;
+      const newName = data.name.trim();
+      const updatedApts = appointments.map((apt) =>
+        apt.mechanic === oldName ? { ...apt, mechanic: newName } : apt
+      );
+      setAppointments(updatedApts);
+      storageService.saveAppointments(updatedApts);
+    }
+  };
+
+  const deleteMechanic = (id: string) => {
+    const updated = mechanics.filter((m) => m.id !== id);
+    setMechanics(updated);
+    storageService.saveMechanics(updated);
+  };
+
+  // Workshop bays operations
+  const addWorkshopBay = (data: Omit<WorkshopBay, 'id'>): WorkshopBay => {
+    const newBay: WorkshopBay = {
+      ...data,
+      id: `bay-${Date.now()}`,
+      active: data.active ?? true,
+    };
+    const updated = [...workshopBays, newBay];
+    setWorkshopBays(updated);
+    storageService.saveWorkshopBays(updated);
+    return newBay;
+  };
+
+  const updateWorkshopBay = (id: string, data: Partial<WorkshopBay>, syncAppointments = true) => {
+    const existing = workshopBays.find((b) => b.id === id);
+    const updated = workshopBays.map((b) => (b.id === id ? { ...b, ...data } : b));
+    setWorkshopBays(updated);
+    storageService.saveWorkshopBays(updated);
+
+    // If the bay name changed and syncAppointments is true, update assigned appointments
+    if (existing && data.name && data.name.trim() !== existing.name && syncAppointments) {
+      const oldName = existing.name;
+      const newName = data.name.trim();
+      const updatedApts = appointments.map((apt) =>
+        apt.bay === oldName ? { ...apt, bay: newName } : apt
+      );
+      setAppointments(updatedApts);
+      storageService.saveAppointments(updatedApts);
+    }
+  };
+
+  const deleteWorkshopBay = (id: string) => {
+    const updated = workshopBays.filter((b) => b.id !== id);
+    setWorkshopBays(updated);
+    storageService.saveWorkshopBays(updated);
   };
 
   // Document operations
@@ -480,6 +569,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDayCloses(storageService.getDayCloses());
     setCatalogItems(storageService.getCatalogItems());
     setCashSettings(storageService.getCashSettings());
+    setMechanics(storageService.getMechanics());
+    setWorkshopBays(storageService.getWorkshopBays());
   };
 
   return (
@@ -517,6 +608,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addAppointment,
         updateAppointment,
         deleteAppointment,
+        mechanics,
+        addMechanic,
+        updateMechanic,
+        deleteMechanic,
+        workshopBays,
+        addWorkshopBay,
+        updateWorkshopBay,
+        deleteWorkshopBay,
         documents,
         addDocument,
         updateDocument,

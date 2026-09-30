@@ -11,6 +11,8 @@ import {
   CashDayClose,
   CatalogItem,
   CashRegisterSettings,
+  Mechanic,
+  WorkshopBay,
 } from '../types';
 
 export const DEFAULT_CASH_SETTINGS: CashRegisterSettings = {
@@ -451,6 +453,19 @@ const INITIAL_APPOINTMENTS: Appointment[] = [
     status: 'planifie',
     mileageEstimated: 104500,
   },
+];
+
+export const INITIAL_MECHANICS: Mechanic[] = [
+  { id: 'mec-1', name: 'Fabrice', role: "Chef d'atelier", phone: '06 12 34 56 78', active: true },
+  { id: 'mec-2', name: 'Thomas', role: 'Mécanicien confirmé', phone: '06 23 45 67 89', active: true },
+  { id: 'mec-3', name: 'Julien', role: 'Apprenti mécanicien', phone: '06 34 56 78 90', active: true },
+];
+
+export const INITIAL_WORKSHOP_BAYS: WorkshopBay[] = [
+  { id: 'bay-1', name: 'Pont 1', description: 'Mécanique lourde (Pont 4T)', defaultMechanic: 'Fabrice', color: '#0284c7', active: true },
+  { id: 'bay-2', name: 'Pont 2', description: 'Géométrie & Pneumatiques', defaultMechanic: 'Thomas', color: '#0ea5e9', active: true },
+  { id: 'bay-3', name: 'Baie Diagnostic', description: 'Diagnostic OBD & Électronique', defaultMechanic: 'Julien', color: '#8b5cf6', active: true },
+  { id: 'bay-4', name: 'Atelier Général', description: 'Entretien rapide & Préparation', defaultMechanic: 'Fabrice', color: '#10b981', active: true },
 ];
 
 const INITIAL_DOCUMENTS: GarageDocument[] = [
@@ -942,6 +957,8 @@ const KEYS = {
   DAY_CLOSES: 'autopro_day_closes_v1',
   CATALOG_ITEMS: 'autopro_catalog_items_v1',
   CASH_SETTINGS: 'autopro_cash_settings_v1',
+  MECHANICS: 'autopro_mechanics_v1',
+  WORKSHOP_BAYS: 'autopro_workshop_bays_v1',
 };
 
 // Generic storage accessors
@@ -1033,6 +1050,14 @@ export const storageService = {
     return DEFAULT_CASH_SETTINGS;
   },
 
+  getMechanics: (): Mechanic[] =>
+    loadItem<Mechanic[]>(KEYS.MECHANICS, INITIAL_MECHANICS),
+  saveMechanics: (mechanics: Mechanic[]) => saveItem(KEYS.MECHANICS, mechanics),
+
+  getWorkshopBays: (): WorkshopBay[] =>
+    loadItem<WorkshopBay[]>(KEYS.WORKSHOP_BAYS, INITIAL_WORKSHOP_BAYS),
+  saveWorkshopBays: (bays: WorkshopBay[]) => saveItem(KEYS.WORKSHOP_BAYS, bays),
+
   // Reset to demo data
   resetAll: () => {
     saveItem(KEYS.THEME, DEFAULT_THEME);
@@ -1046,6 +1071,8 @@ export const storageService = {
     saveItem(KEYS.CASH_TRANSACTIONS, INITIAL_CASH_TRANSACTIONS);
     saveItem(KEYS.DAY_CLOSES, INITIAL_DAY_CLOSES);
     saveItem(KEYS.CATALOG_ITEMS, INITIAL_CATALOG_ITEMS);
+    saveItem(KEYS.MECHANICS, INITIAL_MECHANICS);
+    saveItem(KEYS.WORKSHOP_BAYS, INITIAL_WORKSHOP_BAYS);
   },
 
   // Export full backup
@@ -1062,6 +1089,8 @@ export const storageService = {
       cashTransactions: loadItem(KEYS.CASH_TRANSACTIONS, INITIAL_CASH_TRANSACTIONS),
       dayCloses: loadItem(KEYS.DAY_CLOSES, INITIAL_DAY_CLOSES),
       catalogItems: loadItem(KEYS.CATALOG_ITEMS, INITIAL_CATALOG_ITEMS),
+      mechanics: loadItem(KEYS.MECHANICS, INITIAL_MECHANICS),
+      workshopBays: loadItem(KEYS.WORKSHOP_BAYS, INITIAL_WORKSHOP_BAYS),
       exportedAt: new Date().toISOString(),
     }, null, 2);
   },
@@ -1081,6 +1110,8 @@ export const storageService = {
       if (data.cashTransactions) saveItem(KEYS.CASH_TRANSACTIONS, data.cashTransactions);
       if (data.dayCloses) saveItem(KEYS.DAY_CLOSES, data.dayCloses);
       if (data.catalogItems) saveItem(KEYS.CATALOG_ITEMS, data.catalogItems);
+      if (data.mechanics) saveItem(KEYS.MECHANICS, data.mechanics);
+      if (data.workshopBays) saveItem(KEYS.WORKSHOP_BAYS, data.workshopBays);
       return true;
     } catch (e) {
       console.error('Failed to import backup:', e);
