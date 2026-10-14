@@ -19,6 +19,7 @@ import {
   Sparkles,
   BookmarkPlus,
   Wrench,
+  Database,
 } from 'lucide-react';
 import { CatalogItem, DocumentItem, DocumentType, GarageDocument } from '../../types';
 import { CatalogShortcutsModal } from '../CatalogShortcutsModal';
@@ -34,6 +35,7 @@ export const DocumentsTab: React.FC = () => {
     convertOrderToInvoice,
     setViewingDocument,
     setEditingDocument,
+    setIsBackupModalOpen,
     clients,
     vehicles,
     theme,
@@ -240,6 +242,15 @@ export const DocumentsTab: React.FC = () => {
           >
             <Sparkles className="w-4 h-4 text-sky-600" />
             <span>Raccourcis Prestations & Pièces ({catalogItems.length})</span>
+          </button>
+
+          <button
+            onClick={() => setIsBackupModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors shadow-2xs"
+            title="Sauvegarder ou restaurer l'ensemble des documents, devis, factures et données de l'atelier"
+          >
+            <Database className="w-4 h-4 text-indigo-600" />
+            <span className="hidden sm:inline">Sauvegarder / Restaurer</span>
           </button>
 
           <button

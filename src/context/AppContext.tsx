@@ -14,6 +14,7 @@ import {
   CashRegisterSettings,
   Mechanic,
   WorkshopBay,
+  BackupSnapshot,
 } from '../types';
 import { storageService, recalculateDocumentTotals } from '../services/storage';
 
@@ -33,6 +34,8 @@ interface AppContextType {
   setIsThemeModalOpen: (open: boolean) => void;
   isGarageModalOpen: boolean;
   setIsGarageModalOpen: (open: boolean) => void;
+  isBackupModalOpen: boolean;
+  setIsBackupModalOpen: (open: boolean) => void;
 
   // Print Document preview
   viewingDocument: GarageDocument | null;
@@ -108,6 +111,15 @@ interface AppContextType {
   dayCloses: CashDayClose[];
   addDayClose: (data: Omit<CashDayClose, 'id' | 'closedAt'>) => CashDayClose;
 
+  // Backup & Restore
+  exportBackup: () => string;
+  importBackup: (jsonString: string) => { success: boolean; error?: string; summary?: any };
+  snapshots: BackupSnapshot[];
+  createSnapshot: (label?: string) => BackupSnapshot;
+  restoreSnapshot: (id: string) => { success: boolean; error?: string };
+  deleteSnapshot: (id: string) => void;
+  reloadAllData: () => void;
+
   // Reset
   resetAllData: () => void;
 }
@@ -121,8 +133,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
   const [isGarageModalOpen, setIsGarageModalOpen] = useState(false);
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [viewingDocument, setViewingDocument] = useState<GarageDocument | null>(null);
   const [editingDocument, setEditingDocument] = useState<GarageDocument | null>(null);
+
+  const [snapshots, setSnapshots] = useState<BackupSnapshot[]>(() => storageService.getSnapshots());
 
   const [clients, setClients] = useState<Client[]>(() => storageService.getClients());
   const [vehicles, setVehicles] = useState<Vehicle[]>(() => storageService.getVehicles());
@@ -572,8 +587,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     storageService.saveCatalogItems(updated);
   };
 
-  const resetAllData = () => {
-    storageService.resetAll();
+  const reloadAllData = () => {
     setTheme(storageService.getTheme());
     setGarage(storageService.getGarage());
     setClients(storageService.getClients());
@@ -588,6 +602,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCashSettings(storageService.getCashSettings());
     setMechanics(storageService.getMechanics());
     setWorkshopBays(storageService.getWorkshopBays());
+    setSnapshots(storageService.getSnapshots());
+  };
+
+  const exportBackup = () => storageService.exportBackup();
+
+  const importBackup = (jsonString: string) => {
+    const res = storageService.importBackup(jsonString);
+    if (res.success) {
+      reloadAllData();
+    }
+    return res;
+  };
+
+  const createSnapshot = (label?: string) => {
+    const snap = storageService.createSnapshot(label);
+    setSnapshots(storageService.getSnapshots());
+    return snap;
+  };
+
+  const restoreSnapshot = (id: string) => {
+    const res = storageService.restoreSnapshot(id);
+    if (res.success) {
+      reloadAllData();
+    }
+    return res;
+  };
+
+  const deleteSnapshot = (id: string) => {
+    storageService.deleteSnapshot(id);
+    setSnapshots(storageService.getSnapshots());
+  };
+
+  const resetAllData = () => {
+    storageService.resetAll();
+    reloadAllData();
   };
 
   return (
@@ -603,6 +652,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsThemeModalOpen,
         isGarageModalOpen,
         setIsGarageModalOpen,
+        isBackupModalOpen,
+        setIsBackupModalOpen,
         viewingDocument,
         setViewingDocument,
         editingDocument,
@@ -656,6 +707,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateCashSettings,
         dayCloses,
         addDayClose,
+        exportBackup,
+        importBackup,
+        snapshots,
+        createSnapshot,
+        restoreSnapshot,
+        deleteSnapshot,
+        reloadAllData,
         resetAllData,
       }}
     >

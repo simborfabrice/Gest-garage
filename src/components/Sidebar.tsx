@@ -11,6 +11,7 @@ import {
   Building2,
   RotateCcw,
   Sparkles,
+  Database,
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -21,6 +22,7 @@ export const Sidebar: React.FC = () => {
     theme,
     setIsThemeModalOpen,
     setIsGarageModalOpen,
+    setIsBackupModalOpen,
     resetAllData,
   } = useApp();
 
@@ -187,6 +189,17 @@ export const Sidebar: React.FC = () => {
         >
           <Building2 className="w-4 h-4 text-sky-400 shrink-0" />
           <span>Modifier Logo & Garage</span>
+        </button>
+
+        {/* Sauvegarde & Restauration */}
+        <button
+          onClick={() => setIsBackupModalOpen(true)}
+          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+            isLight ? 'text-slate-700 hover:bg-slate-100' : 'text-slate-300 hover:bg-white/10'
+          }`}
+        >
+          <Database className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>Sauvegarde & Restauration</span>
         </button>
 
         {/* Demo reset */}

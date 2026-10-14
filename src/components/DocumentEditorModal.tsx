@@ -24,6 +24,7 @@ export const DocumentEditorModal: React.FC = () => {
     editingDocument,
     setEditingDocument,
     updateDocument,
+    viewingDocument,
     setViewingDocument,
     clients,
     vehicles,
@@ -194,7 +195,7 @@ export const DocumentEditorModal: React.FC = () => {
 
     setEditingDocument(null);
 
-    if (openViewerAfter) {
+    if (openViewerAfter || viewingDocument?.id === editingDocument.id) {
       setViewingDocument(updatedDoc);
     }
   };

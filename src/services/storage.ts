@@ -13,6 +13,7 @@ import {
   CashRegisterSettings,
   Mechanic,
   WorkshopBay,
+  BackupSnapshot,
 } from '../types';
 
 export const DEFAULT_CASH_SETTINGS: CashRegisterSettings = {
@@ -959,6 +960,7 @@ const KEYS = {
   CASH_SETTINGS: 'autopro_cash_settings_v1',
   MECHANICS: 'autopro_mechanics_v1',
   WORKSHOP_BAYS: 'autopro_workshop_bays_v1',
+  SNAPSHOTS: 'autopro_snapshots_v1',
 };
 
 // Generic storage accessors
@@ -1077,46 +1079,148 @@ export const storageService = {
 
   // Export full backup
   exportBackup: () => {
-    return JSON.stringify({
-      theme: loadItem(KEYS.THEME, DEFAULT_THEME),
-      garage: loadItem(KEYS.GARAGE, DEFAULT_GARAGE),
-      clients: loadItem(KEYS.CLIENTS, INITIAL_CLIENTS),
-      vehicles: loadItem(KEYS.VEHICLES, INITIAL_VEHICLES),
-      suppliers: loadItem(KEYS.SUPPLIERS, INITIAL_SUPPLIERS),
-      supplierOrders: loadItem(KEYS.SUPPLIER_ORDERS, INITIAL_SUPPLIER_ORDERS),
-      appointments: loadItem(KEYS.APPOINTMENTS, INITIAL_APPOINTMENTS),
-      documents: loadItem(KEYS.DOCUMENTS, INITIAL_DOCUMENTS),
-      cashTransactions: loadItem(KEYS.CASH_TRANSACTIONS, INITIAL_CASH_TRANSACTIONS),
-      dayCloses: loadItem(KEYS.DAY_CLOSES, INITIAL_DAY_CLOSES),
-      catalogItems: loadItem(KEYS.CATALOG_ITEMS, INITIAL_CATALOG_ITEMS),
-      mechanics: loadItem(KEYS.MECHANICS, INITIAL_MECHANICS),
-      workshopBays: loadItem(KEYS.WORKSHOP_BAYS, INITIAL_WORKSHOP_BAYS),
+    const clients = loadItem<Client[]>(KEYS.CLIENTS, INITIAL_CLIENTS);
+    const vehicles = loadItem<Vehicle[]>(KEYS.VEHICLES, INITIAL_VEHICLES);
+    const documents = loadItem<GarageDocument[]>(KEYS.DOCUMENTS, INITIAL_DOCUMENTS);
+    const appointments = loadItem<Appointment[]>(KEYS.APPOINTMENTS, INITIAL_APPOINTMENTS);
+    const cashTransactions = loadItem<CashTransaction[]>(KEYS.CASH_TRANSACTIONS, INITIAL_CASH_TRANSACTIONS);
+    const garage = loadItem<GarageSettings>(KEYS.GARAGE, DEFAULT_GARAGE);
+
+    const devisCount = documents.filter((d) => d.type === 'devis').length;
+    const ordersCount = documents.filter((d) => d.type === 'bon_commande').length;
+    const invoicesCount = documents.filter((d) => d.type === 'facture').length;
+    const totalInvoicedTTC = documents
+      .filter((d) => d.type === 'facture')
+      .reduce((sum, d) => sum + (d.totalTTC || 0), 0);
+
+    const backupPayload = {
+      version: 1,
+      appName: 'Garage MécaPro & Performance',
       exportedAt: new Date().toISOString(),
-    }, null, 2);
+      summary: {
+        documentsCount: documents.length,
+        devisCount,
+        ordersCount,
+        invoicesCount,
+        clientsCount: clients.length,
+        vehiclesCount: vehicles.length,
+        appointmentsCount: appointments.length,
+        transactionsCount: cashTransactions.length,
+        totalInvoicedTTC,
+        garageName: garage.name,
+      },
+      data: {
+        theme: loadItem(KEYS.THEME, DEFAULT_THEME),
+        garage,
+        clients,
+        vehicles,
+        suppliers: loadItem(KEYS.SUPPLIERS, INITIAL_SUPPLIERS),
+        supplierOrders: loadItem(KEYS.SUPPLIER_ORDERS, INITIAL_SUPPLIER_ORDERS),
+        appointments,
+        documents,
+        cashTransactions,
+        dayCloses: loadItem(KEYS.DAY_CLOSES, INITIAL_DAY_CLOSES),
+        catalogItems: loadItem(KEYS.CATALOG_ITEMS, INITIAL_CATALOG_ITEMS),
+        cashSettings: loadItem(KEYS.CASH_SETTINGS, DEFAULT_CASH_SETTINGS),
+        mechanics: loadItem(KEYS.MECHANICS, INITIAL_MECHANICS),
+        workshopBays: loadItem(KEYS.WORKSHOP_BAYS, INITIAL_WORKSHOP_BAYS),
+      },
+    };
+
+    return JSON.stringify(backupPayload, null, 2);
   },
 
-  // Import backup
-  importBackup: (jsonString: string) => {
+  // Import backup (handles both wrapped payload and legacy flat json)
+  importBackup: (jsonString: string): { success: boolean; error?: string; summary?: any } => {
     try {
-      const data = JSON.parse(jsonString);
-      if (data.theme) saveItem(KEYS.THEME, data.theme);
-      if (data.garage) saveItem(KEYS.GARAGE, data.garage);
-      if (data.clients) saveItem(KEYS.CLIENTS, data.clients);
-      if (data.vehicles) saveItem(KEYS.VEHICLES, data.vehicles);
-      if (data.suppliers) saveItem(KEYS.SUPPLIERS, data.suppliers);
-      if (data.supplierOrders) saveItem(KEYS.SUPPLIER_ORDERS, data.supplierOrders);
-      if (data.appointments) saveItem(KEYS.APPOINTMENTS, data.appointments);
-      if (data.documents) saveItem(KEYS.DOCUMENTS, data.documents);
-      if (data.cashTransactions) saveItem(KEYS.CASH_TRANSACTIONS, data.cashTransactions);
-      if (data.dayCloses) saveItem(KEYS.DAY_CLOSES, data.dayCloses);
-      if (data.catalogItems) saveItem(KEYS.CATALOG_ITEMS, data.catalogItems);
-      if (data.mechanics) saveItem(KEYS.MECHANICS, data.mechanics);
-      if (data.workshopBays) saveItem(KEYS.WORKSHOP_BAYS, data.workshopBays);
-      return true;
-    } catch (e) {
+      const parsed = JSON.parse(jsonString);
+      if (!parsed || typeof parsed !== 'object') {
+        return { success: false, error: 'Format JSON invalide ou vide.' };
+      }
+
+      // Check if data is nested in parsed.data or directly at root
+      const payload = parsed.data && typeof parsed.data === 'object' ? parsed.data : parsed;
+
+      let importedCount = 0;
+      if (payload.theme) { saveItem(KEYS.THEME, payload.theme); importedCount++; }
+      if (payload.garage) { saveItem(KEYS.GARAGE, payload.garage); importedCount++; }
+      if (payload.clients) { saveItem(KEYS.CLIENTS, payload.clients); importedCount++; }
+      if (payload.vehicles) { saveItem(KEYS.VEHICLES, payload.vehicles); importedCount++; }
+      if (payload.suppliers) { saveItem(KEYS.SUPPLIERS, payload.suppliers); importedCount++; }
+      if (payload.supplierOrders) { saveItem(KEYS.SUPPLIER_ORDERS, payload.supplierOrders); importedCount++; }
+      if (payload.appointments) { saveItem(KEYS.APPOINTMENTS, payload.appointments); importedCount++; }
+      if (payload.documents) { saveItem(KEYS.DOCUMENTS, payload.documents); importedCount++; }
+      if (payload.cashTransactions) { saveItem(KEYS.CASH_TRANSACTIONS, payload.cashTransactions); importedCount++; }
+      if (payload.dayCloses) { saveItem(KEYS.DAY_CLOSES, payload.dayCloses); importedCount++; }
+      if (payload.catalogItems) { saveItem(KEYS.CATALOG_ITEMS, payload.catalogItems); importedCount++; }
+      if (payload.cashSettings) { saveItem(KEYS.CASH_SETTINGS, payload.cashSettings); importedCount++; }
+      if (payload.mechanics) { saveItem(KEYS.MECHANICS, payload.mechanics); importedCount++; }
+      if (payload.workshopBays) { saveItem(KEYS.WORKSHOP_BAYS, payload.workshopBays); importedCount++; }
+
+      if (importedCount === 0) {
+        return {
+          success: false,
+          error: "Le fichier ne contient aucune donnée reconnaissable (clients, devis, factures, caisse, etc.).",
+        };
+      }
+
+      const summary = parsed.summary || {
+        documentsCount: payload.documents?.length || 0,
+        clientsCount: payload.clients?.length || 0,
+        vehiclesCount: payload.vehicles?.length || 0,
+        appointmentsCount: payload.appointments?.length || 0,
+        transactionsCount: payload.cashTransactions?.length || 0,
+        garageName: payload.garage?.name || 'Garage',
+      };
+
+      return { success: true, summary };
+    } catch (e: any) {
       console.error('Failed to import backup:', e);
-      return false;
+      return { success: false, error: e?.message || 'Erreur lors de la lecture du fichier JSON.' };
     }
+  },
+
+  // Snapshots (Points de restauration locaux en navigateur)
+  getSnapshots: (): BackupSnapshot[] => {
+    return loadItem<BackupSnapshot[]>(KEYS.SNAPSHOTS, []);
+  },
+
+  saveSnapshots: (snapshots: BackupSnapshot[]) => {
+    saveItem(KEYS.SNAPSHOTS, snapshots);
+  },
+
+  createSnapshot: (label?: string): BackupSnapshot => {
+    const rawBackup = storageService.exportBackup();
+    const parsed = JSON.parse(rawBackup);
+    const existing = loadItem<BackupSnapshot[]>(KEYS.SNAPSHOTS, []);
+
+    const snapshot: BackupSnapshot = {
+      id: `snap-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      label: label && label.trim() ? label.trim() : `Point du ${new Date().toLocaleDateString('fr-FR')} ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
+      createdAt: new Date().toISOString(),
+      summary: parsed.summary,
+      data: rawBackup,
+    };
+
+    // Keep up to 20 snapshots
+    const updated = [snapshot, ...existing].slice(0, 20);
+    saveItem(KEYS.SNAPSHOTS, updated);
+    return snapshot;
+  },
+
+  restoreSnapshot: (id: string): { success: boolean; error?: string } => {
+    const snapshots = loadItem<BackupSnapshot[]>(KEYS.SNAPSHOTS, []);
+    const target = snapshots.find((s) => s.id === id);
+    if (!target) {
+      return { success: false, error: 'Point de restauration introuvable.' };
+    }
+    return storageService.importBackup(target.data);
+  },
+
+  deleteSnapshot: (id: string) => {
+    const snapshots = loadItem<BackupSnapshot[]>(KEYS.SNAPSHOTS, []);
+    const updated = snapshots.filter((s) => s.id !== id);
+    saveItem(KEYS.SNAPSHOTS, updated);
   },
 };
 

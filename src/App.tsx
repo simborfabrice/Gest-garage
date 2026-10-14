@@ -12,6 +12,7 @@ import { ThemeModal } from './components/ThemeModal';
 import { GarageSettingsModal } from './components/GarageSettingsModal';
 import { DocumentViewerModal } from './components/DocumentViewerModal';
 import { DocumentEditorModal } from './components/DocumentEditorModal';
+import { BackupRestoreModal } from './components/BackupRestoreModal';
 
 const AppContent: React.FC = () => {
   const { activeTab, theme } = useApp();
@@ -66,6 +67,7 @@ const AppContent: React.FC = () => {
       <GarageSettingsModal />
       <DocumentViewerModal />
       <DocumentEditorModal />
+      <BackupRestoreModal />
     </div>
   );
 };
