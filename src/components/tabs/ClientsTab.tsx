@@ -12,6 +12,7 @@ import {
   FileText,
   Trash2,
   Edit2,
+  Edit3,
   X,
   PlusCircle,
   Eye,
@@ -31,6 +32,7 @@ export const ClientsTab: React.FC = () => {
     documents,
     theme,
     setViewingDocument,
+    setEditingDocument,
     setActiveTab,
   } = useApp();
 
@@ -457,16 +459,25 @@ export const ClientsTab: React.FC = () => {
                           <span className="text-slate-500">{formatDate(doc.date)}</span>
                         </div>
 
-                        <div className="flex items-center gap-3">
-                          <span className="font-mono font-bold text-slate-900">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-slate-900 mr-1">
                             {doc.totalTTC.toFixed(2)} € TTC
                           </span>
                           <button
+                            type="button"
                             onClick={() => setViewingDocument(doc)}
-                            className="p-1 text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded"
+                            className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded transition-colors"
                             title="Visualiser et imprimer"
                           >
                             <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingDocument(doc)}
+                            className="p-1.5 text-sky-600 hover:text-sky-900 hover:bg-sky-100 rounded transition-colors"
+                            title="Modifier ce document"
+                          >
+                            <Edit3 className="w-4 h-4" />
                           </button>
                         </div>
                       </div>

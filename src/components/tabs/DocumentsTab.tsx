@@ -6,6 +6,7 @@ import {
   Search,
   Filter,
   Eye,
+  Edit3,
   ArrowRight,
   Printer,
   Trash2,
@@ -32,6 +33,7 @@ export const DocumentsTab: React.FC = () => {
     convertQuoteToOrder,
     convertOrderToInvoice,
     setViewingDocument,
+    setEditingDocument,
     clients,
     vehicles,
     theme,
@@ -43,6 +45,7 @@ export const DocumentsTab: React.FC = () => {
   const [filterType, setFilterType] = useState<'all' | 'devis' | 'bon_commande' | 'facture'>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [quickSelectedDocId, setQuickSelectedDocId] = useState<string>('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false);
   const [catalogNotification, setCatalogNotification] = useState<string | null>(null);
@@ -253,6 +256,125 @@ export const DocumentsTab: React.FC = () => {
         </div>
       </div>
 
+      {/* Quick Document Opener & Modifier Bar */}
+      <div className="bg-gradient-to-r from-sky-50 via-slate-50 to-indigo-50/50 p-4 rounded-xl border border-sky-200/90 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-sky-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+            <FileText className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-xs font-bold text-slate-900 flex items-center gap-2">
+              <span>Accès direct : Ouvrir ou Modifier un Document existant</span>
+              <span className="text-[10px] font-semibold bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full border border-sky-200">
+                {documents.length} document(s)
+              </span>
+            </h3>
+            <p className="text-[11px] text-slate-500">
+              Sélectionnez n'importe quel devis, bon de commande ou facture pour l'ouvrir immédiatement ou modifier son contenu
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 sm:w-80 min-w-[240px]">
+            <select
+              value={quickSelectedDocId}
+              onChange={(e) => setQuickSelectedDocId(e.target.value)}
+              className="w-full pl-3 pr-8 py-2 text-xs font-medium rounded-lg border border-slate-300 bg-white text-slate-900 shadow-2xs focus:ring-2 focus:ring-sky-500 focus:outline-hidden truncate"
+            >
+              <option value="">Choisir un document à ouvrir / modifier...</option>
+              <optgroup label="Devis chiffrés">
+                {documents
+                  .filter((d) => d.type === 'devis')
+                  .map((d) => {
+                    const cl = clients.find((c) => c.id === d.clientId);
+                    const clName = cl
+                      ? cl.type === 'professionnel'
+                        ? cl.companyName
+                        : `${cl.firstName} ${cl.lastName}`
+                      : 'N/A';
+                    return (
+                      <option key={d.id} value={d.id}>
+                        Devis {d.referenceNumber} — {clName} ({d.totalTTC.toFixed(2)} €)
+                      </option>
+                    );
+                  })}
+              </optgroup>
+              <optgroup label="Bons de commande">
+                {documents
+                  .filter((d) => d.type === 'bon_commande')
+                  .map((d) => {
+                    const cl = clients.find((c) => c.id === d.clientId);
+                    const clName = cl
+                      ? cl.type === 'professionnel'
+                        ? cl.companyName
+                        : `${cl.firstName} ${cl.lastName}`
+                      : 'N/A';
+                    return (
+                      <option key={d.id} value={d.id}>
+                        Bon de Cde {d.referenceNumber} — {clName} ({d.totalTTC.toFixed(2)} €)
+                      </option>
+                    );
+                  })}
+              </optgroup>
+              <optgroup label="Factures d'atelier">
+                {documents
+                  .filter((d) => d.type === 'facture')
+                  .map((d) => {
+                    const cl = clients.find((c) => c.id === d.clientId);
+                    const clName = cl
+                      ? cl.type === 'professionnel'
+                        ? cl.companyName
+                        : `${cl.firstName} ${cl.lastName}`
+                      : 'N/A';
+                    return (
+                      <option key={d.id} value={d.id}>
+                        Facture {d.referenceNumber} — {clName} ({d.totalTTC.toFixed(2)} €)
+                      </option>
+                    );
+                  })}
+              </optgroup>
+            </select>
+          </div>
+
+          <button
+            type="button"
+            disabled={!quickSelectedDocId}
+            onClick={() => {
+              const target = documents.find((d) => d.id === quickSelectedDocId);
+              if (target) setViewingDocument(target);
+            }}
+            className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg shadow-2xs transition-colors ${
+              quickSelectedDocId
+                ? 'bg-slate-900 text-white hover:bg-slate-800'
+                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+            }`}
+            title="Ouvrir le document sélectionné en aperçu officiel (avec logo, impression, conversion)"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>Ouvrir</span>
+          </button>
+
+          <button
+            type="button"
+            disabled={!quickSelectedDocId}
+            onClick={() => {
+              const target = documents.find((d) => d.id === quickSelectedDocId);
+              if (target) setEditingDocument(target);
+            }}
+            className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg shadow-2xs transition-colors ${
+              quickSelectedDocId
+                ? 'bg-sky-600 text-white hover:bg-sky-700'
+                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+            }`}
+            title="Modifier directement ce document (lignes de pièces, main d'œuvre, tarifs, client, mentions)"
+          >
+            <Edit3 className="w-3.5 h-3.5" />
+            <span>Modifier</span>
+          </button>
+        </div>
+      </div>
+
       {/* Tabs Filter Bar */}
       <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
         <div className="flex items-center gap-1.5 text-xs">
@@ -351,7 +473,15 @@ export const DocumentsTab: React.FC = () => {
                       </td>
 
                       <td className="py-3.5 px-4 font-mono font-bold text-slate-900">
-                        {doc.referenceNumber}
+                        <button
+                          type="button"
+                          onClick={() => setViewingDocument(doc)}
+                          className="hover:text-sky-600 hover:underline font-mono font-bold text-left transition-colors flex items-center gap-1 group"
+                          title="Cliquer pour ouvrir l'aperçu officiel de ce document"
+                        >
+                          <span>{doc.referenceNumber}</span>
+                          <Eye className="w-3 h-3 text-slate-400 group-hover:text-sky-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
                       </td>
 
                       <td className="py-3.5 px-4 text-slate-500 tabular-nums">
@@ -393,16 +523,30 @@ export const DocumentsTab: React.FC = () => {
                         <div className="flex items-center justify-end gap-1.5">
                           {/* Visualiser / Imprimer */}
                           <button
+                            type="button"
                             onClick={() => setViewingDocument(doc)}
-                            className="p-1.5 text-slate-700 hover:text-slate-950 hover:bg-slate-200 rounded transition-colors"
-                            title="Ouvrir le document officiel avec logo"
+                            className="flex items-center gap-1 px-2 py-1 text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 rounded text-[11px] font-semibold transition-colors"
+                            title="Ouvrir le document officiel avec logo & impression"
                           >
-                            <Eye className="w-4 h-4" />
+                            <Eye className="w-3.5 h-3.5" />
+                            <span className="hidden md:inline">Ouvrir</span>
+                          </button>
+
+                          {/* MODIFIER LE DOCUMENT EXISTANT */}
+                          <button
+                            type="button"
+                            onClick={() => setEditingDocument(doc)}
+                            className="flex items-center gap-1 px-2.5 py-1 text-sky-800 hover:text-sky-950 bg-sky-50 hover:bg-sky-100 border border-sky-300 rounded text-[11px] font-semibold transition-colors shadow-2xs"
+                            title="Modifier ce document (prestations, pièces, main d'œuvre, tarifs, client, mentions)"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 text-sky-600" />
+                            <span>Modifier</span>
                           </button>
 
                           {/* Quick Workflow Action */}
                           {doc.type === 'devis' && (
                             <button
+                              type="button"
                               onClick={() => convertQuoteToOrder(doc.id)}
                               className="p-1.5 text-emerald-700 hover:bg-emerald-50 rounded transition-colors"
                               title="Transformer ce devis en bon de commande"
@@ -413,6 +557,7 @@ export const DocumentsTab: React.FC = () => {
 
                           {doc.type === 'bon_commande' && (
                             <button
+                              type="button"
                               onClick={() => convertOrderToInvoice(doc.id)}
                               className="p-1.5 text-blue-700 hover:bg-blue-50 rounded transition-colors"
                               title="Émettre la facture finale"
@@ -423,6 +568,7 @@ export const DocumentsTab: React.FC = () => {
 
                           {doc.type === 'facture' && doc.status !== 'paye' && (
                             <button
+                              type="button"
                               onClick={() => {
                                 updateDocument(doc.id, { status: 'paye', amountPaid: doc.totalTTC });
                               }}
@@ -434,12 +580,14 @@ export const DocumentsTab: React.FC = () => {
                           )}
 
                           <button
+                            type="button"
                             onClick={() => {
                               if (confirm(`Supprimer le document ${doc.referenceNumber} ?`)) {
                                 deleteDocument(doc.id);
                               }
                             }}
                             className="p-1.5 text-slate-300 hover:text-rose-600 rounded transition-colors"
+                            title="Supprimer ce document"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

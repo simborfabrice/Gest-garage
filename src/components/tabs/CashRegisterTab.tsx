@@ -29,6 +29,8 @@ import {
   Wallet,
   FileText,
   CheckCircle2,
+  Eye,
+  Edit3,
 } from 'lucide-react';
 import { CashTransaction, CashDayClose } from '../../types';
 import { formatDate, formatDateLong, formatDateTime, formatDateFull } from '../../utils/dateUtils';
@@ -48,6 +50,8 @@ export const CashRegisterTab: React.FC = () => {
     addDayClose,
     documents,
     updateDocument,
+    setViewingDocument,
+    setEditingDocument,
     garage,
     theme,
   } = useApp();
@@ -1224,6 +1228,43 @@ export const CashRegisterTab: React.FC = () => {
                         </option>
                       ))}
                     </select>
+                  )}
+                  {selectedInvoiceId && (
+                    <div className="flex items-center gap-2 mt-1.5 text-[11px]">
+                      {(() => {
+                        const inv = unpaidInvoices.find((d) => d.id === selectedInvoiceId);
+                        if (!inv) return null;
+                        return (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsCheckoutModalOpen(false);
+                                setViewingDocument(inv);
+                              }}
+                              className="text-sky-700 hover:text-sky-900 underline flex items-center gap-1 font-medium"
+                              title="Consulter l'aperçu officiel de cette facture"
+                            >
+                              <Eye className="w-3 h-3" />
+                              <span>Consulter la facture #{inv.referenceNumber}</span>
+                            </button>
+                            <span className="text-slate-300">·</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsCheckoutModalOpen(false);
+                                setEditingDocument(inv);
+                              }}
+                              className="text-slate-600 hover:text-slate-900 underline flex items-center gap-1 font-medium"
+                              title="Modifier les pièces, lignes ou montants de cette facture"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              <span>Modifier la facture</span>
+                            </button>
+                          </>
+                        );
+                      })()}
+                    </div>
                   )}
                 </div>
               ) : (

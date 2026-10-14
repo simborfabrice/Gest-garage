@@ -12,6 +12,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Eye,
+  Edit3,
 } from 'lucide-react';
 import { formatDate } from '../../utils/dateUtils';
 
@@ -23,6 +24,7 @@ export const AccountingTab: React.FC = () => {
     clients,
     theme,
     setViewingDocument,
+    setEditingDocument,
   } = useApp();
 
   const [period, setPeriod] = useState<'month' | 'quarter' | 'year' | 'all'>('month');
@@ -418,12 +420,25 @@ export const AccountingTab: React.FC = () => {
                         {remaining.toFixed(2)} €
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => setViewingDocument(inv)}
-                          className="px-2.5 py-1 text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 rounded font-medium text-[11px] transition-colors"
-                        >
-                          Voir facture
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setViewingDocument(inv)}
+                            className="px-2.5 py-1 text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 rounded font-medium text-[11px] transition-colors"
+                            title="Ouvrir la facture officielle avec logo"
+                          >
+                            Voir
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingDocument(inv)}
+                            className="flex items-center gap-1 px-2 py-1 text-sky-700 hover:text-sky-900 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded font-medium text-[11px] transition-colors"
+                            title="Modifier cette facture existante"
+                          >
+                            <Edit3 className="w-3 h-3 text-sky-600" />
+                            <span>Modifier</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

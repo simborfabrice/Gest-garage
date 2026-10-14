@@ -38,6 +38,10 @@ interface AppContextType {
   viewingDocument: GarageDocument | null;
   setViewingDocument: (doc: GarageDocument | null) => void;
 
+  // Edit Document modal
+  editingDocument: GarageDocument | null;
+  setEditingDocument: (doc: GarageDocument | null) => void;
+
   // Clients & Vehicles
   clients: Client[];
   addClient: (data: Omit<Client, 'id' | 'createdAt'>) => Client;
@@ -118,6 +122,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
   const [isGarageModalOpen, setIsGarageModalOpen] = useState(false);
   const [viewingDocument, setViewingDocument] = useState<GarageDocument | null>(null);
+  const [editingDocument, setEditingDocument] = useState<GarageDocument | null>(null);
 
   const [clients, setClients] = useState<Client[]>(() => storageService.getClients());
   const [vehicles, setVehicles] = useState<Vehicle[]>(() => storageService.getVehicles());
@@ -375,17 +380,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateDocument = (id: string, data: Partial<GarageDocument>) => {
+    let modifiedDoc: GarageDocument | null = null;
     const updated = documents.map((d) => {
       if (d.id !== id) return d;
       const combined = { ...d, ...data };
       if (data.items) {
         const totals = recalculateDocumentTotals(combined.items);
-        return { ...combined, ...totals };
+        modifiedDoc = { ...combined, ...totals };
+        return modifiedDoc;
       }
+      modifiedDoc = combined;
       return combined;
     });
     setDocuments(updated);
     storageService.saveDocuments(updated);
+
+    if (modifiedDoc) {
+      if (viewingDocument && viewingDocument.id === id) {
+        setViewingDocument(modifiedDoc);
+      }
+      if (editingDocument && editingDocument.id === id) {
+        setEditingDocument(modifiedDoc);
+      }
+    }
   };
 
   const deleteDocument = (id: string) => {
@@ -588,6 +605,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsGarageModalOpen,
         viewingDocument,
         setViewingDocument,
+        editingDocument,
+        setEditingDocument,
         clients,
         addClient,
         updateClient,

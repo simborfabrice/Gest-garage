@@ -1,6 +1,17 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { X, Printer, CheckCircle, Clock, AlertTriangle, FileText, ArrowRight } from 'lucide-react';
+import {
+  X,
+  Printer,
+  CheckCircle,
+  Clock,
+  AlertTriangle,
+  FileText,
+  ArrowRight,
+  Edit3,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import { GarageDocument } from '../types';
 import { formatDate } from '../utils/dateUtils';
 
@@ -8,6 +19,8 @@ export const DocumentViewerModal: React.FC = () => {
   const {
     viewingDocument,
     setViewingDocument,
+    setEditingDocument,
+    documents,
     garage,
     updateGarage,
     theme,
@@ -29,6 +42,24 @@ export const DocumentViewerModal: React.FC = () => {
   const isInvoice = doc.type === 'facture';
 
   const typeLabel = isQuote ? 'DEVIS' : isOrder ? 'BON DE COMMANDE' : 'FACTURE';
+
+  // Navigation between documents
+  const currentIndex = documents.findIndex((d) => d.id === doc.id);
+  const handlePrevDoc = () => {
+    if (currentIndex > 0) {
+      setViewingDocument(documents[currentIndex - 1]);
+    } else if (documents.length > 0) {
+      setViewingDocument(documents[documents.length - 1]);
+    }
+  };
+
+  const handleNextDoc = () => {
+    if (currentIndex < documents.length - 1) {
+      setViewingDocument(documents[currentIndex + 1]);
+    } else if (documents.length > 0) {
+      setViewingDocument(documents[0]);
+    }
+  };
 
   const handlePrint = () => {
     window.print();
@@ -52,7 +83,7 @@ export const DocumentViewerModal: React.FC = () => {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto no-print">
       <div className="relative w-full max-w-4xl bg-white rounded-xl shadow-2xl border border-slate-300 overflow-hidden my-6 flex flex-col max-h-[92vh]">
         {/* Modal Top Control Bar (Never printed) */}
-        <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200 bg-slate-100 shrink-0 no-print">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3 border-b border-slate-200 bg-slate-100 shrink-0 no-print">
           <div className="flex items-center gap-3">
             <span
               className="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded text-white"
@@ -65,7 +96,83 @@ export const DocumentViewerModal: React.FC = () => {
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Quick Switch to any other Document */}
+            <div className="flex items-center gap-1 bg-white border border-slate-300 rounded-lg p-0.5 shadow-2xs">
+              <button
+                type="button"
+                onClick={handlePrevDoc}
+                className="p-1 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+                title="Document précédent"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+
+              <select
+                value={doc.id}
+                onChange={(e) => {
+                  const target = documents.find((d) => d.id === e.target.value);
+                  if (target) setViewingDocument(target);
+                }}
+                className="bg-transparent text-[11px] font-semibold text-slate-800 focus:outline-hidden py-1 px-1.5 cursor-pointer max-w-[250px] sm:max-w-[320px] truncate"
+                title="Ouvrir un autre document (Devis, Commande, Facture)"
+              >
+                <optgroup label="Devis chiffrés">
+                  {documents.filter((d) => d.type === 'devis').map((d) => {
+                    const cl = clients.find((c) => c.id === d.clientId);
+                    const clName = cl ? (cl.type === 'professionnel' ? cl.companyName : `${cl.firstName} ${cl.lastName}`) : '';
+                    return (
+                      <option key={d.id} value={d.id}>
+                        Devis {d.referenceNumber} — {clName} ({d.totalTTC.toFixed(2)} €)
+                      </option>
+                    );
+                  })}
+                </optgroup>
+                <optgroup label="Bons de commande">
+                  {documents.filter((d) => d.type === 'bon_commande').map((d) => {
+                    const cl = clients.find((c) => c.id === d.clientId);
+                    const clName = cl ? (cl.type === 'professionnel' ? cl.companyName : `${cl.firstName} ${cl.lastName}`) : '';
+                    return (
+                      <option key={d.id} value={d.id}>
+                        Commande {d.referenceNumber} — {clName} ({d.totalTTC.toFixed(2)} €)
+                      </option>
+                    );
+                  })}
+                </optgroup>
+                <optgroup label="Factures d'atelier">
+                  {documents.filter((d) => d.type === 'facture').map((d) => {
+                    const cl = clients.find((c) => c.id === d.clientId);
+                    const clName = cl ? (cl.type === 'professionnel' ? cl.companyName : `${cl.firstName} ${cl.lastName}`) : '';
+                    return (
+                      <option key={d.id} value={d.id}>
+                        Facture {d.referenceNumber} — {clName} ({d.totalTTC.toFixed(2)} €)
+                      </option>
+                    );
+                  })}
+                </optgroup>
+              </select>
+
+              <button
+                type="button"
+                onClick={handleNextDoc}
+                className="p-1 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+                title="Document suivant"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* EDIT DOCUMENT BUTTON */}
+            <button
+              type="button"
+              onClick={() => setEditingDocument(doc)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
+              title="Modifier les pièces, main d'œuvre, tarifs, client ou mentions de ce document"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>Modifier</span>
+            </button>
+
             {/* Workflow transformation buttons */}
             {isQuote && doc.status !== 'refuse' && (
               <button
@@ -105,23 +212,23 @@ export const DocumentViewerModal: React.FC = () => {
             )}
 
             {/* Redimensionnement direct du logo sur le document */}
-            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 rounded-lg border border-slate-200 text-xs">
-              <span className="text-slate-600 font-medium text-[11px]">Taille logo :</span>
+            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 bg-white rounded-lg border border-slate-200 text-xs shadow-2xs">
+              <span className="text-slate-600 font-medium text-[11px]">Logo :</span>
               <button
                 type="button"
                 onClick={() => updateGarage({ logoSize: Math.max((garage.logoSize || 140) - 15, 50) })}
-                className="w-6 h-6 flex items-center justify-center bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold text-slate-700 shadow-2xs"
+                className="w-5 h-5 flex items-center justify-center bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded font-bold text-slate-700 text-xs"
                 title="Diminuer la taille du logo"
               >
                 -
               </button>
-              <span className="font-mono font-bold text-slate-800 text-[11px] w-12 text-center tabular-nums">
+              <span className="font-mono font-bold text-slate-800 text-[11px] w-10 text-center tabular-nums">
                 {garage.logoSize || 140}px
               </span>
               <button
                 type="button"
                 onClick={() => updateGarage({ logoSize: Math.min((garage.logoSize || 140) + 15, 320) })}
-                className="w-6 h-6 flex items-center justify-center bg-white hover:bg-slate-200 border border-slate-300 rounded font-bold text-slate-700 shadow-2xs"
+                className="w-5 h-5 flex items-center justify-center bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded font-bold text-slate-700 text-xs"
                 title="Agrandir la taille du logo"
               >
                 +
@@ -140,7 +247,7 @@ export const DocumentViewerModal: React.FC = () => {
             <button
               type="button"
               onClick={() => setViewingDocument(null)}
-              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors ml-2"
+              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors ml-1"
             >
               <X className="w-5 h-5" />
             </button>
