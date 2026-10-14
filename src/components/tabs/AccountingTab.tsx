@@ -424,10 +424,10 @@ export const AccountingTab: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => setViewingDocument(inv)}
-                            className="px-2.5 py-1 text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 rounded font-medium text-[11px] transition-colors"
-                            title="Ouvrir la facture officielle avec logo"
+                            className="px-2.5 py-1 text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded font-semibold text-[11px] transition-colors"
+                            title="Aperçu avant impression au format A4 avec logo officiel et mentions légales"
                           >
-                            Voir
+                            Aperçu A4
                           </button>
                           <button
                             type="button"

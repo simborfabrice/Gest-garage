@@ -148,7 +148,7 @@ export const Header: React.FC = () => {
           <span className="lg:hidden hidden sm:inline">Sauvegarde</span>
         </button>
 
-        {/* Quick Open Documents Viewer Button */}
+        {/* Quick Open Documents Viewer Button (A4 Preview) */}
         <button
           onClick={() => {
             if (documents.length > 0) {
@@ -158,11 +158,11 @@ export const Header: React.FC = () => {
             }
           }}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
-          title="Ouvrir le visualiseur de documents (devis, bons de commande, factures) et naviguer à volonté"
+          title="Aperçu avant impression au format A4 de tous les documents (devis, commandes, factures, fournisseurs)"
         >
-          <FileText className="w-3.5 h-3.5 text-blue-600" />
-          <span className="hidden xl:inline">Ouvrir Documents ({documents.length})</span>
-          <span className="xl:hidden hidden sm:inline">Documents</span>
+          <Printer className="w-3.5 h-3.5 text-blue-600" />
+          <span className="hidden xl:inline">Aperçu Documents A4 ({documents.length})</span>
+          <span className="xl:hidden hidden sm:inline">Aperçu A4</span>
         </button>
 
         {/* Quick New Document Shortcut */}

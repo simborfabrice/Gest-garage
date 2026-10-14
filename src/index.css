@@ -56,8 +56,20 @@ body {
   background-color: var(--table-header-bg, #f1f5f9);
 }
 
-/* Print specific styles for Invoices, Quotes, and Cash receipts */
+/* Print specific styles for Invoices, Quotes, Orders, Workshop Cards, and Cash receipts */
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm 8mm 8mm 8mm;
+  }
+
+  html, body {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 11pt;
+  }
+
   body * {
     visibility: hidden;
   }
@@ -73,7 +85,21 @@ body {
     visibility: visible;
   }
 
-  #printable-document,
+  #printable-document {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+    border: none !important;
+    transform: none !important;
+  }
+
   #printable-receipt,
   #printable-z,
   #printable-daily-settlements {
@@ -82,14 +108,21 @@ body {
     top: 0;
     width: 100% !important;
     margin: 0 !important;
-    padding: 15mm !important;
+    padding: 10mm !important;
     background: white !important;
     color: black !important;
     box-shadow: none !important;
     border: none !important;
   }
 
-  .no-print {
+  .no-print,
+  .print-guide-margin {
     display: none !important;
+  }
+
+  /* Prevent awkward page breaks */
+  tr, .avoid-break {
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
 }

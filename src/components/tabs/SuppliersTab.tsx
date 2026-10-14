@@ -14,6 +14,7 @@ import {
   Trash2,
   X,
   FileCheck,
+  Eye,
 } from 'lucide-react';
 import { Supplier, SupplierOrder, SupplierOrderItem } from '../../types';
 import { formatDate } from '../../utils/dateUtils';
@@ -27,6 +28,7 @@ export const SuppliersTab: React.FC = () => {
     addSupplierOrder,
     updateSupplierOrder,
     deleteSupplierOrder,
+    setViewingSupplierOrder,
     theme,
   } = useApp();
 
@@ -285,16 +287,30 @@ export const SuppliersTab: React.FC = () => {
                           </select>
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <button
-                            onClick={() => {
-                              if (confirm('Supprimer cette commande fournisseur ?')) {
-                                deleteSupplierOrder(order.id);
-                              }
-                            }}
-                            className="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setViewingSupplierOrder(order)}
+                              className="flex items-center gap-1 px-2.5 py-1 text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded text-[11px] font-semibold transition-colors"
+                              title="Aperçu avant impression au format A4"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-sky-600" />
+                              <span>Aperçu A4</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (confirm('Supprimer cette commande fournisseur ?')) {
+                                  deleteSupplierOrder(order.id);
+                                }
+                              }}
+                              className="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors"
+                              title="Supprimer la commande"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

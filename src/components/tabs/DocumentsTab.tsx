@@ -379,10 +379,10 @@ export const DocumentsTab: React.FC = () => {
                 ? 'bg-slate-900 text-white hover:bg-slate-800'
                 : 'bg-slate-200 text-slate-400 cursor-not-allowed'
             }`}
-            title="Ouvrir le document sélectionné en aperçu officiel (avec logo, impression, conversion)"
+            title="Aperçu avant impression au format A4 (avec logo, impression, conversion)"
           >
-            <Eye className="w-3.5 h-3.5" />
-            <span>Ouvrir</span>
+            <Eye className="w-3.5 h-3.5 text-sky-400" />
+            <span>Aperçu A4</span>
           </button>
 
           <button
@@ -551,15 +551,15 @@ export const DocumentsTab: React.FC = () => {
 
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          {/* Visualiser / Imprimer */}
+                          {/* Visualiser / Imprimer A4 */}
                           <button
                             type="button"
                             onClick={() => setViewingDocument(doc)}
-                            className="flex items-center gap-1 px-2 py-1 text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 rounded text-[11px] font-semibold transition-colors"
-                            title="Ouvrir le document officiel avec logo & impression"
+                            className="flex items-center gap-1 px-2.5 py-1 text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded text-[11px] font-semibold transition-colors"
+                            title="Aperçu avant impression au format A4 avec logo officiel et mentions légales"
                           >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span className="hidden md:inline">Ouvrir</span>
+                            <Eye className="w-3.5 h-3.5 text-sky-600" />
+                            <span className="hidden md:inline">Aperçu A4</span>
                           </button>
 
                           {/* MODIFIER LE DOCUMENT EXISTANT */}

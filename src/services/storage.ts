@@ -225,13 +225,22 @@ const INITIAL_SUPPLIERS: Supplier[] = [
   },
 ];
 
+const getRelativeDateStr = (daysOffset: number = 0): string => {
+  const d = new Date();
+  d.setDate(d.getDate() + daysOffset);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
 const INITIAL_SUPPLIER_ORDERS: SupplierOrder[] = [
   {
     id: 'so-1',
     supplierId: 'sup-1',
     orderNumber: 'CMD-AD-8941',
-    orderDate: '2026-09-28',
-    deliveryDate: '2026-09-29',
+    orderDate: getRelativeDateStr(-2),
+    deliveryDate: getRelativeDateStr(-1),
     status: 'recu',
     items: [
       {
@@ -268,8 +277,8 @@ const INITIAL_SUPPLIER_ORDERS: SupplierOrder[] = [
     id: 'so-2',
     supplierId: 'sup-2',
     orderNumber: 'CMD-PNEU-5520',
-    orderDate: '2026-09-27',
-    deliveryDate: '2026-09-28',
+    orderDate: getRelativeDateStr(-3),
+    deliveryDate: getRelativeDateStr(-2),
     status: 'paye',
     items: [
       {
@@ -298,8 +307,8 @@ const INITIAL_SUPPLIER_ORDERS: SupplierOrder[] = [
     id: 'so-3',
     supplierId: 'sup-3',
     orderNumber: 'CMD-CAS-1049',
-    orderDate: '2026-09-25',
-    deliveryDate: '2026-09-27',
+    orderDate: getRelativeDateStr(-5),
+    deliveryDate: getRelativeDateStr(-3),
     status: 'recu',
     items: [
       {
@@ -317,15 +326,6 @@ const INITIAL_SUPPLIER_ORDERS: SupplierOrder[] = [
     notes: 'Facture en attente de règlement au 30/10.',
   },
 ];
-
-const getRelativeDateStr = (daysOffset: number = 0): string => {
-  const d = new Date();
-  d.setDate(d.getDate() + daysOffset);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-};
 
 const INITIAL_APPOINTMENTS: Appointment[] = [
   {
@@ -374,7 +374,7 @@ const INITIAL_APPOINTMENTS: Appointment[] = [
     id: 'apt-4',
     clientId: 'cli-2',
     vehicleId: 'veh-2',
-    date: '2026-10-01',
+    date: getRelativeDateStr(1),
     startTime: '09:00',
     durationMinutes: 240,
     serviceType: 'Kit de Distribution & Pompe à Eau',
@@ -388,7 +388,7 @@ const INITIAL_APPOINTMENTS: Appointment[] = [
     id: 'apt-5',
     clientId: 'cli-1',
     vehicleId: 'veh-1',
-    date: '2026-09-24',
+    date: getRelativeDateStr(-2),
     startTime: '14:30',
     durationMinutes: 60,
     serviceType: 'Pré-contrôle technique & Diagnostic Valise',
@@ -402,7 +402,7 @@ const INITIAL_APPOINTMENTS: Appointment[] = [
     id: 'apt-6',
     clientId: 'cli-3',
     vehicleId: 'veh-3',
-    date: '2026-09-12',
+    date: getRelativeDateStr(-7),
     startTime: '09:15',
     durationMinutes: 60,
     serviceType: 'Vidange huile moteur & remplacement filtre habitacle',
@@ -415,7 +415,7 @@ const INITIAL_APPOINTMENTS: Appointment[] = [
     id: 'apt-7',
     clientId: 'cli-4',
     vehicleId: 'veh-4',
-    date: '2026-09-18',
+    date: getRelativeDateStr(-4),
     startTime: '11:00',
     durationMinutes: 90,
     serviceType: 'Purge freinage haute pression & liquide DOT4',
@@ -428,7 +428,7 @@ const INITIAL_APPOINTMENTS: Appointment[] = [
     id: 'apt-8',
     clientId: 'cli-2',
     vehicleId: 'veh-5',
-    date: '2026-10-05',
+    date: getRelativeDateStr(2),
     startTime: '13:30',
     durationMinutes: 120,
     serviceType: 'Amortisseurs avant & coupelles de suspension',
@@ -441,7 +441,7 @@ const INITIAL_APPOINTMENTS: Appointment[] = [
     id: 'apt-9',
     clientId: 'cli-1',
     vehicleId: 'veh-1',
-    date: '2026-10-12',
+    date: getRelativeDateStr(4),
     startTime: '10:00',
     durationMinutes: 60,
     serviceType: 'Contrôle antipollution & décalaminage moteur hydrogène',
@@ -454,7 +454,7 @@ const INITIAL_APPOINTMENTS: Appointment[] = [
     id: 'apt-10',
     clientId: 'cli-3',
     vehicleId: 'veh-3',
-    date: '2026-10-18',
+    date: getRelativeDateStr(6),
     startTime: '15:00',
     durationMinutes: 45,
     serviceType: 'Permutation pneus hiver & équilibrage roues',
@@ -483,8 +483,8 @@ const INITIAL_DOCUMENTS: GarageDocument[] = [
     id: 'doc-1',
     type: 'facture',
     referenceNumber: 'FAC-2026-0089',
-    date: '2026-09-24',
-    dueDate: '2026-10-24',
+    date: getRelativeDateStr(-3),
+    dueDate: getRelativeDateStr(27),
     clientId: 'cli-1',
     vehicleId: 'veh-1',
     status: 'paye',
@@ -524,7 +524,7 @@ const INITIAL_DOCUMENTS: GarageDocument[] = [
     id: 'doc-2',
     type: 'bon_commande',
     referenceNumber: 'BC-2026-0034',
-    date: '2026-09-29',
+    date: getRelativeDateStr(-1),
     clientId: 'cli-1',
     vehicleId: 'veh-1',
     status: 'valide',
@@ -584,8 +584,8 @@ const INITIAL_DOCUMENTS: GarageDocument[] = [
     id: 'doc-3',
     type: 'devis',
     referenceNumber: 'DEV-2026-0052',
-    date: '2026-09-28',
-    validityDate: '2026-10-28',
+    date: getRelativeDateStr(0),
+    validityDate: getRelativeDateStr(30),
     clientId: 'cli-2',
     vehicleId: 'veh-2',
     status: 'envoye',
@@ -644,8 +644,8 @@ const INITIAL_DOCUMENTS: GarageDocument[] = [
     id: 'doc-4',
     type: 'facture',
     referenceNumber: 'FAC-2026-0090',
-    date: '2026-09-26',
-    dueDate: '2026-10-10',
+    date: getRelativeDateStr(-2),
+    dueDate: getRelativeDateStr(12),
     clientId: 'cli-4',
     vehicleId: 'veh-4',
     status: 'paye',
@@ -705,8 +705,8 @@ const INITIAL_DOCUMENTS: GarageDocument[] = [
     id: 'doc-5',
     type: 'facture',
     referenceNumber: 'FAC-2026-0091',
-    date: '2026-09-28',
-    dueDate: '2026-10-15',
+    date: getRelativeDateStr(-1),
+    dueDate: getRelativeDateStr(14),
     clientId: 'cli-2',
     vehicleId: 'veh-5',
     status: 'partiellement_paye',
@@ -814,7 +814,7 @@ const INITIAL_CASH_TRANSACTIONS: CashTransaction[] = [
 const INITIAL_DAY_CLOSES: CashDayClose[] = [
   {
     id: 'close-1',
-    date: '2026-09-29',
+    date: getRelativeDateStr(-1),
     openingBalance: 250.0,
     totalCash: 184.0,
     totalCard: 489.5,
@@ -825,7 +825,7 @@ const INITIAL_DAY_CLOSES: CashDayClose[] = [
     actualCashCounted: 434.0,
     discrepancy: 0,
     closedBy: 'Fabrice (Gérant)',
-    closedAt: '2026-09-29T18:45:00Z',
+    closedAt: `${getRelativeDateStr(-1)}T18:45:00Z`,
     notes: 'Caisse exacte, aucun écart.',
   },
 ];

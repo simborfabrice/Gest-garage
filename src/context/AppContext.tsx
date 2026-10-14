@@ -40,6 +40,8 @@ interface AppContextType {
   // Print Document preview
   viewingDocument: GarageDocument | null;
   setViewingDocument: (doc: GarageDocument | null) => void;
+  viewingSupplierOrder: SupplierOrder | null;
+  setViewingSupplierOrder: (order: SupplierOrder | null) => void;
 
   // Edit Document modal
   editingDocument: GarageDocument | null;
@@ -135,6 +137,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isGarageModalOpen, setIsGarageModalOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [viewingDocument, setViewingDocument] = useState<GarageDocument | null>(null);
+  const [viewingSupplierOrder, setViewingSupplierOrder] = useState<SupplierOrder | null>(null);
   const [editingDocument, setEditingDocument] = useState<GarageDocument | null>(null);
 
   const [snapshots, setSnapshots] = useState<BackupSnapshot[]>(() => storageService.getSnapshots());
@@ -656,6 +659,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsBackupModalOpen,
         viewingDocument,
         setViewingDocument,
+        viewingSupplierOrder,
+        setViewingSupplierOrder,
         editingDocument,
         setEditingDocument,
         clients,

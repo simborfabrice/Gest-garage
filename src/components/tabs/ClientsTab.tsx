@@ -467,7 +467,7 @@ export const ClientsTab: React.FC = () => {
                             type="button"
                             onClick={() => setViewingDocument(doc)}
                             className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded transition-colors"
-                            title="Visualiser et imprimer"
+                            title="Aperçu avant impression au format A4"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
