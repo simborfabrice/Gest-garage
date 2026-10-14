@@ -120,10 +120,23 @@ export const CashRegisterTab: React.FC = () => {
     (d) => d.type === 'facture' && d.status !== 'paye'
   );
 
-  // Today's transactions
-  const todayDateStr = '2026-09-30';
+  // Today's date helper
+  const getTodayIso = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  // State to filter cash transactions by date, defaulting to today's real date
+  const [selectedCashDate, setSelectedCashDate] = useState<string>(() => getTodayIso());
+  const [showAllDates, setShowAllDates] = useState<boolean>(false);
+
+  // Active date for day register
+  const todayDateStr = selectedCashDate;
   const todayTransactions = cashTransactions.filter((tx) =>
-    tx.date.startsWith(todayDateStr)
+    showAllDates ? true : tx.date.startsWith(todayDateStr)
   );
 
   // Calculations for today
@@ -830,15 +843,49 @@ export const CashRegisterTab: React.FC = () => {
                 <Receipt className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <h3 className="text-base font-bold text-slate-900 flex flex-wrap items-center gap-2">
                   <span>Détail des Règlements Journaliers</span>
                   <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                    {formatDateFull(todayDateStr)}
+                    {showAllDates ? 'Toutes les dates confondues' : formatDateFull(todayDateStr)}
                   </span>
                 </h3>
-                <p className="text-xs text-slate-500">
-                  Ventilation complète et pointage de tous les paiements clients enregistrés aujourd’hui.
-                </p>
+                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCashDate(getTodayIso());
+                      setShowAllDates(false);
+                    }}
+                    className={`px-2 py-0.5 text-[11px] font-semibold rounded border transition-colors ${
+                      !showAllDates && selectedCashDate === getTodayIso()
+                        ? 'bg-sky-600 text-white border-sky-600'
+                        : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200'
+                    }`}
+                  >
+                    Aujourd'hui
+                  </button>
+                  <input
+                    type="date"
+                    value={selectedCashDate}
+                    onChange={(e) => {
+                      setSelectedCashDate(e.target.value);
+                      setShowAllDates(false);
+                    }}
+                    className="px-2 py-0.5 text-[11px] border border-slate-300 rounded font-medium bg-white text-slate-700"
+                    title="Choisir une date pour filtrer les encaissements"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAllDates(!showAllDates)}
+                    className={`px-2 py-0.5 text-[11px] font-medium rounded border transition-colors ${
+                      showAllDates
+                        ? 'bg-slate-900 text-white border-slate-900 font-semibold'
+                        : 'bg-white text-slate-600 hover:bg-slate-50 border-slate-200'
+                    }`}
+                  >
+                    {showAllDates ? '✓ Toutes les dates' : 'Toutes les dates'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

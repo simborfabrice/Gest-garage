@@ -529,7 +529,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const clearDayTransactions = (preserveOpeningBalance: boolean = true) => {
-    const today = '2026-09-30';
+    const today = new Date().toISOString().split('T')[0];
     let updated: CashTransaction[];
     if (preserveOpeningBalance) {
       const openingTx = cashTransactions.find(

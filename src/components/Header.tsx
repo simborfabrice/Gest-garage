@@ -10,6 +10,7 @@ import {
   DollarSign,
   Car,
   Database,
+  FileText,
 } from 'lucide-react';
 import { formatDateFull } from '../utils/dateUtils';
 
@@ -18,6 +19,8 @@ export const Header: React.FC = () => {
     activeTab,
     garage,
     theme,
+    documents,
+    setViewingDocument,
     setIsThemeModalOpen,
     setIsGarageModalOpen,
     setIsBackupModalOpen,
@@ -104,7 +107,7 @@ export const Header: React.FC = () => {
 
         <span className="text-slate-300 hidden md:inline">·</span>
         <span className="text-xs text-slate-500 font-medium hidden md:inline capitalize">
-          {formatDateFull('2026-09-30')}
+          {formatDateFull(new Date())}
         </span>
       </div>
 
@@ -143,6 +146,23 @@ export const Header: React.FC = () => {
           <Database className="w-3.5 h-3.5 text-indigo-600" />
           <span className="hidden lg:inline">Sauvegarde & Restauration</span>
           <span className="lg:hidden hidden sm:inline">Sauvegarde</span>
+        </button>
+
+        {/* Quick Open Documents Viewer Button */}
+        <button
+          onClick={() => {
+            if (documents.length > 0) {
+              setViewingDocument(documents[0]);
+            } else {
+              setActiveTab('documents');
+            }
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
+          title="Ouvrir le visualiseur de documents (devis, bons de commande, factures) et naviguer à volonté"
+        >
+          <FileText className="w-3.5 h-3.5 text-blue-600" />
+          <span className="hidden xl:inline">Ouvrir Documents ({documents.length})</span>
+          <span className="xl:hidden hidden sm:inline">Documents</span>
         </button>
 
         {/* Quick New Document Shortcut */}

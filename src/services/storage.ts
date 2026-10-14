@@ -318,12 +318,21 @@ const INITIAL_SUPPLIER_ORDERS: SupplierOrder[] = [
   },
 ];
 
+const getRelativeDateStr = (daysOffset: number = 0): string => {
+  const d = new Date();
+  d.setDate(d.getDate() + daysOffset);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
 const INITIAL_APPOINTMENTS: Appointment[] = [
   {
     id: 'apt-1',
     clientId: 'cli-1',
     vehicleId: 'veh-1',
-    date: '2026-09-30',
+    date: getRelativeDateStr(0),
     startTime: '08:30',
     durationMinutes: 120,
     serviceType: 'Freinage & Disques + Vidange Moteur',
@@ -337,7 +346,7 @@ const INITIAL_APPOINTMENTS: Appointment[] = [
     id: 'apt-2',
     clientId: 'cli-3',
     vehicleId: 'veh-3',
-    date: '2026-09-30',
+    date: getRelativeDateStr(0),
     startTime: '10:45',
     durationMinutes: 90,
     serviceType: 'Entretien Annuel & Recharge Climatisation R134a',
@@ -351,7 +360,7 @@ const INITIAL_APPOINTMENTS: Appointment[] = [
     id: 'apt-3',
     clientId: 'cli-4',
     vehicleId: 'veh-4',
-    date: '2026-09-30',
+    date: getRelativeDateStr(0),
     startTime: '14:00',
     durationMinutes: 180,
     serviceType: 'Géométrie 4 Roues + 2 Pneus Arrière',
@@ -738,7 +747,7 @@ const INITIAL_DOCUMENTS: GarageDocument[] = [
 const INITIAL_CASH_TRANSACTIONS: CashTransaction[] = [
   {
     id: 'csh-1',
-    date: '2026-09-30T08:00:00Z',
+    date: `${getRelativeDateStr(0)}T08:00:00Z`,
     type: 'apport_caisse',
     label: 'Fond de caisse initial ouverture du jour',
     amount: 250.0,
@@ -747,7 +756,7 @@ const INITIAL_CASH_TRANSACTIONS: CashTransaction[] = [
   },
   {
     id: 'csh-2',
-    date: '2026-09-30T08:45:00Z',
+    date: `${getRelativeDateStr(0)}T08:45:00Z`,
     type: 'vente_directe',
     label: 'Vente directe : Bidon Huile 5L 5W30 C3 + Entonnoir',
     amount: 48.0,
@@ -759,7 +768,7 @@ const INITIAL_CASH_TRANSACTIONS: CashTransaction[] = [
   },
   {
     id: 'csh-3',
-    date: '2026-09-30T09:15:00Z',
+    date: `${getRelativeDateStr(0)}T09:15:00Z`,
     type: 'encaissement_facture',
     label: 'Acompte Bon de commande BC-2026-0034 (Freins Dubois)',
     amount: 100.0,
@@ -772,7 +781,7 @@ const INITIAL_CASH_TRANSACTIONS: CashTransaction[] = [
   },
   {
     id: 'csh-4',
-    date: '2026-09-30T10:10:00Z',
+    date: `${getRelativeDateStr(0)}T10:10:00Z`,
     type: 'encaissement_facture',
     label: 'Règlement Facture FAC-2026-0089',
     amount: 117.5,
@@ -783,7 +792,7 @@ const INITIAL_CASH_TRANSACTIONS: CashTransaction[] = [
   },
   {
     id: 'csh-5',
-    date: '2026-09-30T11:30:00Z',
+    date: `${getRelativeDateStr(0)}T11:30:00Z`,
     type: 'vente_directe',
     label: 'Vente directe : Lot ampoules H7 Philips + Lave-glace hiver',
     amount: 24.5,
@@ -793,7 +802,7 @@ const INITIAL_CASH_TRANSACTIONS: CashTransaction[] = [
   },
   {
     id: 'csh-6',
-    date: '2026-09-30T12:00:00Z',
+    date: `${getRelativeDateStr(0)}T12:00:00Z`,
     type: 'retrait_caisse',
     label: 'Dépannage visserie inox quincaillerie locale',
     amount: 16.5,

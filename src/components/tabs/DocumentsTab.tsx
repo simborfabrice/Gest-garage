@@ -56,9 +56,28 @@ export const DocumentsTab: React.FC = () => {
   const [newDocType, setNewDocType] = useState<DocumentType>('devis');
   const [newClientId, setNewClientId] = useState(clients[0]?.id || '');
   const [newVehicleId, setNewVehicleId] = useState(vehicles[0]?.id || '');
-  const [newDate, setNewDate] = useState('2026-09-30');
-  const [newValidityDate, setNewValidityDate] = useState('2026-10-30');
-  const [newDueDate, setNewDueDate] = useState('2026-10-30');
+
+  // Helpers for dynamic current date & +30 days
+  const getTodayIso = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  const getFutureIso = (daysAhead: number = 30) => {
+    const d = new Date();
+    d.setDate(d.getDate() + daysAhead);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const [newDate, setNewDate] = useState<string>(() => getTodayIso());
+  const [newValidityDate, setNewValidityDate] = useState<string>(() => getFutureIso(30));
+  const [newDueDate, setNewDueDate] = useState<string>(() => getFutureIso(30));
   const [newNotes, setNewNotes] = useState('');
   const [newMileage, setNewMileage] = useState<number>(100000);
 

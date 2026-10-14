@@ -48,12 +48,23 @@ export const CalendarTab: React.FC = () => {
   // Active view: 'grid31' (monthly table grid) | 'table31' (31-day rows table) | 'dayDetail' (selected day list)
   const [calendarView, setCalendarView] = useState<'grid31' | 'table31' | 'dayDetail'>('grid31');
 
-  // Month navigation: year and month (0-indexed: 8 = Septembre 2026, 9 = Octobre 2026)
-  const [currentYear, setCurrentYear] = useState<number>(2026);
-  const [currentMonth, setCurrentMonth] = useState<number>(8); // 8 = Septembre
+  // Helper to format today's date YYYY-MM-DD
+  const getTodayDateStr = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
 
-  // Selected day for dayDetail view
-  const [selectedDayDate, setSelectedDayDate] = useState<string>('2026-09-30');
+  const today = new Date();
+
+  // Month navigation: year and month (0-indexed: opens at today's real date)
+  const [currentYear, setCurrentYear] = useState<number>(() => today.getFullYear());
+  const [currentMonth, setCurrentMonth] = useState<number>(() => today.getMonth());
+
+  // Selected day for dayDetail view (opens at today's real date)
+  const [selectedDayDate, setSelectedDayDate] = useState<string>(() => getTodayDateStr());
 
   // Filters
   const [mechanicFilter, setMechanicFilter] = useState('all');
@@ -69,10 +80,10 @@ export const CalendarTab: React.FC = () => {
   // Modal for new appointment
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // New appointment form state
+  // New appointment form state (defaults to today's real date)
   const [newClientId, setNewClientId] = useState(clients[0]?.id || '');
   const [newVehicleId, setNewVehicleId] = useState(vehicles[0]?.id || '');
-  const [newDate, setNewDate] = useState('2026-09-30');
+  const [newDate, setNewDate] = useState<string>(() => getTodayDateStr());
   const [newStartTime, setNewStartTime] = useState('09:00');
   const [newDuration, setNewDuration] = useState(60);
   const [newServiceType, setNewServiceType] = useState('Révision générale & Vidange');
@@ -116,6 +127,14 @@ export const CalendarTab: React.FC = () => {
     }
   };
 
+  // Jump to today
+  const handleGoToToday = () => {
+    const now = new Date();
+    setCurrentYear(now.getFullYear());
+    setCurrentMonth(now.getMonth());
+    setSelectedDayDate(getTodayDateStr());
+  };
+
   // Helper to format date string YYYY-MM-DD
   const formatDayDate = (dayNumber: number): string => {
     const m = String(currentMonth + 1).padStart(2, '0');
@@ -157,23 +176,27 @@ export const CalendarTab: React.FC = () => {
     setNewNotes('');
   };
 
-  const handleGenerateDocument = (apt: Appointment, type: 'devis' | 'facture') => {
+  const handleGenerateDocument = (apt: Appointment, type: 'devis' | 'bon_commande' | 'facture') => {
     const client = clients.find((c) => c.id === apt.clientId);
     const vehicle = vehicles.find((v) => v.id === apt.vehicleId);
 
-    const prefix = type === 'devis' ? 'DEV' : 'FAC';
+    const prefix = type === 'devis' ? 'DEV' : type === 'bon_commande' ? 'BC' : 'FAC';
     const year = new Date().getFullYear();
     const ref = `${prefix}-${year}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const aptDateObj = new Date(apt.date || Date.now());
+    aptDateObj.setDate(aptDateObj.getDate() + 30);
+    const defaultDueIso = `${aptDateObj.getFullYear()}-${String(aptDateObj.getMonth() + 1).padStart(2, '0')}-${String(aptDateObj.getDate()).padStart(2, '0')}`;
 
     const newDoc = addDocument({
       type,
       referenceNumber: ref,
       date: apt.date,
-      validityDate: type === 'devis' ? '2026-10-30' : undefined,
-      dueDate: type === 'facture' ? '2026-10-30' : undefined,
+      validityDate: type === 'devis' ? defaultDueIso : undefined,
+      dueDate: type === 'facture' ? defaultDueIso : undefined,
       clientId: apt.clientId,
       vehicleId: apt.vehicleId,
-      status: type === 'devis' ? 'envoye' : 'brouillon',
+      status: type === 'devis' ? 'envoye' : type === 'bon_commande' ? 'valide' : 'brouillon',
       items: [
         {
           id: `item-${Date.now()}-1`,
@@ -309,6 +332,17 @@ export const CalendarTab: React.FC = () => {
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
+
+          {/* Jump to Today Button */}
+          <button
+            type="button"
+            onClick={handleGoToToday}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 rounded-lg shadow-2xs transition-colors"
+            title="Afficher la date d'aujourd'hui"
+          >
+            <CalendarIcon className="w-3.5 h-3.5 text-sky-600" />
+            <span>Aujourd'hui</span>
+          </button>
 
           {/* Workshop Config (Mechanics & Bays) Button */}
           <button
@@ -468,7 +502,7 @@ export const CalendarTab: React.FC = () => {
               const dayNum = idx + 1;
               const dateStr = formatDayDate(dayNum);
               const dayApts = getAppointmentsForDay(dateStr);
-              const isToday = dateStr === '2026-09-30';
+              const isToday = dateStr === getTodayDateStr();
               const isSelected = dateStr === selectedDayDate;
 
               return (
@@ -625,7 +659,7 @@ export const CalendarTab: React.FC = () => {
                   const dayNum = idx + 1;
                   const dateStr = formatDayDate(dayNum);
                   const dayApts = getAppointmentsForDay(dateStr);
-                  const isToday = dateStr === '2026-09-30';
+                  const isToday = dateStr === getTodayDateStr();
 
                   return (
                     <tr
@@ -886,15 +920,25 @@ export const CalendarTab: React.FC = () => {
                       </button>
                       <button
                         onClick={() => handleGenerateDocument(apt, 'devis')}
-                        className="px-2.5 py-1.5 border border-slate-300 hover:bg-slate-100 rounded font-semibold text-[11px]"
+                        className="px-2.5 py-1.5 border border-slate-300 hover:bg-slate-100 rounded font-semibold text-[11px] text-slate-700"
+                        title="Créer un devis chiffré depuis ce rendez-vous"
                       >
-                        Créer Devis
+                        Devis
+                      </button>
+
+                      <button
+                        onClick={() => handleGenerateDocument(apt, 'bon_commande')}
+                        className="px-2.5 py-1.5 border border-sky-300 text-sky-700 hover:bg-sky-50 rounded font-semibold text-[11px]"
+                        title="Créer un bon de commande officiel depuis ce rendez-vous"
+                      >
+                        Bon Cde
                       </button>
 
                       <button
                         onClick={() => handleGenerateDocument(apt, 'facture')}
                         className="px-2.5 py-1.5 text-white rounded font-semibold text-[11px] shadow-xs"
                         style={{ backgroundColor: theme.primaryColor }}
+                        title="Créer une facture depuis ce rendez-vous"
                       >
                         Facturer
                       </button>
