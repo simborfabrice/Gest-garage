@@ -80,6 +80,7 @@ export const DocumentsTab: React.FC = () => {
   const [newDueDate, setNewDueDate] = useState<string>(() => getFutureIso(30));
   const [newNotes, setNewNotes] = useState('');
   const [newMileage, setNewMileage] = useState<number>(100000);
+  const [newPaymentMethod, setNewPaymentMethod] = useState<'especes' | 'carte' | 'cheque' | 'virement'>('carte');
 
   const [items, setItems] = useState<Omit<DocumentItem, 'id'>[]>([
     {
@@ -212,6 +213,7 @@ export const DocumentsTab: React.FC = () => {
       totalTVA: 0,
       totalTTC: 0,
       amountPaid: 0,
+      paymentMethod: newPaymentMethod,
       notes: newNotes,
       mileageAtService: newMileage,
     });
@@ -762,6 +764,20 @@ export const DocumentsTab: React.FC = () => {
                     onChange={(e) => setNewMileage(Number(e.target.value))}
                     className="w-full border border-slate-300 rounded-lg p-2 text-xs tabular-nums"
                   />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Mode de règlement *</label>
+                  <select
+                    value={newPaymentMethod}
+                    onChange={(e) => setNewPaymentMethod(e.target.value as any)}
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white font-medium"
+                  >
+                    <option value="carte">Carte Bancaire (CB)</option>
+                    <option value="especes">Espèces</option>
+                    <option value="cheque">Chèque</option>
+                    <option value="virement">Virement bancaire</option>
+                  </select>
                 </div>
               </div>
 

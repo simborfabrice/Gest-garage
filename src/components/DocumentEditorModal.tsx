@@ -416,17 +416,17 @@ export const DocumentEditorModal: React.FC = () => {
               </div>
             </div>
 
-            {/* Payment Details if Invoice or Paid */}
-            {(docType === 'facture' || status === 'paye' || status === 'partiellement_paye') && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200/80 bg-emerald-50/40 p-3 rounded-lg border border-emerald-100">
+            {/* Mode de règlement & Règlements */}
+            <div className="pt-2 border-t border-slate-200/80 bg-slate-50 p-3 rounded-lg border border-slate-200">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Mode de règlement utilisé
+                    Mode de règlement
                   </label>
                   <select
                     value={paymentMethod || 'carte'}
                     onChange={(e) => setPaymentMethod(e.target.value as any)}
-                    className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white font-medium"
                   >
                     <option value="carte">Carte Bancaire (CB)</option>
                     <option value="especes">Espèces (Liquide)</option>
@@ -435,26 +435,32 @@ export const DocumentEditorModal: React.FC = () => {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Montant déjà réglé (€)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={status === 'paye' ? liveTotals.totalTTC : amountPaid}
-                    onChange={(e) => setAmountPaid(Number(e.target.value))}
-                    disabled={status === 'paye'}
-                    className="w-full border border-slate-300 rounded-lg p-2 text-xs tabular-nums bg-white font-mono font-bold"
-                  />
-                  {status === 'paye' && (
-                    <span className="text-[10px] text-emerald-700 mt-0.5 block">
-                      Facture entièrement acquittée ({liveTotals.totalTTC.toFixed(2)} €)
-                    </span>
-                  )}
-                </div>
+                {docType === 'facture' || status === 'paye' || status === 'partiellement_paye' ? (
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      Montant déjà réglé (€)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={status === 'paye' ? liveTotals.totalTTC : amountPaid}
+                      onChange={(e) => setAmountPaid(Number(e.target.value))}
+                      disabled={status === 'paye'}
+                      className="w-full border border-slate-300 rounded-lg p-2 text-xs tabular-nums bg-white font-mono font-bold"
+                    />
+                    {status === 'paye' && (
+                      <span className="text-[10px] text-emerald-700 mt-0.5 block font-medium">
+                        Facture entièrement acquittée ({liveTotals.totalTTC.toFixed(2)} €)
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center text-[11px] text-slate-500 sm:pt-4">
+                    <span>Ce mode de règlement apparaîtra sur le document officiel.</span>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
 
           {/* Section 2: Items / Prestations & Pièces Facturées */}

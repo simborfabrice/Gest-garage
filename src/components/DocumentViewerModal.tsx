@@ -29,6 +29,21 @@ import { printElement, downloadPrintableHtml } from '../utils/printUtils';
 
 type ViewLayoutMode = 'official_standard' | 'official_compact' | 'workshop_card' | 'handover';
 
+export const formatPaymentMethod = (method?: string): string => {
+  switch (method) {
+    case 'carte':
+      return 'Carte Bancaire';
+    case 'especes':
+      return 'Espèces';
+    case 'cheque':
+      return 'Chèque';
+    case 'virement':
+      return 'Virement bancaire';
+    default:
+      return 'Carte Bancaire';
+  }
+};
+
 export const DocumentViewerModal: React.FC = () => {
   const {
     viewingDocument,
@@ -36,6 +51,7 @@ export const DocumentViewerModal: React.FC = () => {
     viewingSupplierOrder,
     setViewingSupplierOrder,
     setEditingDocument,
+    updateDocument,
     documents,
     supplierOrders,
     suppliers,
@@ -806,6 +822,12 @@ export const DocumentViewerModal: React.FC = () => {
                       <p>
                         Date de prestation : <strong className="text-white">{formatDate(doc.date)}</strong>
                       </p>
+                      <p>
+                        Mode de règlement :{' '}
+                        <strong className="text-amber-300 font-bold">
+                          {formatPaymentMethod(doc.paymentMethod)}
+                        </strong>
+                      </p>
                       {isQuote && doc.validityDate && (
                         <p>
                           Offre valable jusqu'au :{' '}
@@ -935,47 +957,12 @@ export const DocumentViewerModal: React.FC = () => {
                     </table>
                   </div>
 
-                  {/* RÉCAPITULATIF FISCAL & SOUS-TOTAUX (Norme de facturation obligatoire) */}
+                  {/* SOUS-TOTAUX & MODE DE RÈGLEMENT */}
                   <div className="grid grid-cols-12 gap-4 items-start pt-1 avoid-break">
-                    {/* GAUCHE (Col 7) : Ventilation TVA + Sous-totaux Prestations + Règlement */}
+                    {/* GAUCHE (Col 7) : Sous-totaux par nature + Mode de Règlement */}
                     <div className="col-span-7 space-y-3">
-                      {/* Tableau de Ventilation de la TVA (Obligation CGI) */}
-                      <div className="border border-slate-300 rounded overflow-hidden">
-                        <div className="bg-slate-100 px-2 py-1 border-b border-slate-200 text-[9.5px] font-bold text-slate-700 uppercase tracking-wider">
-                          Tableau de Récapitulation Fiscale de la TVA (art. 242 nonies A du CGI)
-                        </div>
-                        <table className="w-full text-left text-[10px] border-collapse">
-                          <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
-                            <tr>
-                              <th className="py-1 px-2">Taux TVA</th>
-                              <th className="py-1 px-2 text-right">Base Hors Taxe</th>
-                              <th className="py-1 px-2 text-right">Montant de TVA</th>
-                              <th className="py-1 px-2 text-right">Total TTC</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-200 font-mono">
-                            {Object.entries(vatBreakdown).map(([rateStr, val]) => (
-                              <tr key={rateStr}>
-                                <td className="py-1 px-2 font-sans font-medium text-slate-800">
-                                  Taux normal ({parseFloat(rateStr).toFixed(1)}%)
-                                </td>
-                                <td className="py-1 px-2 text-right tabular-nums">
-                                  {val.baseHT.toFixed(2)} €
-                                </td>
-                                <td className="py-1 px-2 text-right tabular-nums font-semibold">
-                                  {val.amountTVA.toFixed(2)} €
-                                </td>
-                                <td className="py-1 px-2 text-right tabular-nums font-bold">
-                                  {(val.baseHT + val.amountTVA).toFixed(2)} €
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-
                       {/* Sous-totaux par nature de travail */}
-                      <div className="p-2 rounded bg-slate-50 border border-slate-200 text-[10px] grid grid-cols-3 gap-2">
+                      <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-[10px] grid grid-cols-3 gap-2">
                         <div>
                           <span className="text-slate-500 block">Total Pièces HT :</span>
                           <strong className="font-mono text-slate-800 text-[11px]">
@@ -996,23 +983,38 @@ export const DocumentViewerModal: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Coordonnées bancaires & Modalités */}
-                      <div className="p-2.5 rounded bg-slate-50/80 border border-slate-200 text-[10px] text-slate-600 space-y-1">
-                        <p className="font-bold text-slate-800 uppercase tracking-wide text-[9.5px]">
-                          Modalités de Règlement & Coordonnées Bancaires :
-                        </p>
-                        <p>
-                          Moyens acceptés : Carte Bancaire, Virement, Chèque, Espèces (max. 1 000 €).
-                        </p>
-                        {garage.bankIban && (
-                          <p className="font-mono text-[10px] text-slate-900 bg-white p-1 rounded border border-slate-200">
-                            IBAN : <strong>{garage.bankIban}</strong> · BIC : <strong>{garage.bankBic}</strong>
-                          </p>
-                        )}
+                      {/* Mode de règlement */}
+                      <div className="p-3.5 rounded-lg bg-slate-50/90 border border-slate-300 text-xs space-y-2 shadow-2xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-800 uppercase tracking-wide text-[11px]">
+                            Mode de règlement :
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="px-3 py-1 bg-white rounded-md border border-slate-300 font-bold text-slate-950 text-xs shadow-2xs">
+                              {formatPaymentMethod(doc.paymentMethod)}
+                            </span>
+                            <select
+                              value={doc.paymentMethod || 'carte'}
+                              onChange={(e) => {
+                                updateDocument(doc.id, {
+                                  paymentMethod: e.target.value as any,
+                                });
+                              }}
+                              className="no-print text-[11px] border border-slate-300 rounded px-2 py-0.5 bg-white text-slate-700 cursor-pointer hover:border-sky-500 focus:outline-hidden"
+                              title="Modifier le mode de règlement de ce document"
+                            >
+                              <option value="carte">Carte Bancaire (CB)</option>
+                              <option value="especes">Espèces</option>
+                              <option value="cheque">Chèque</option>
+                              <option value="virement">Virement bancaire</option>
+                            </select>
+                          </div>
+                        </div>
                         {doc.notes && (
-                          <p className="text-[10px] text-amber-900 pt-0.5 italic">
-                            Remarque atelier : {doc.notes}
-                          </p>
+                          <div className="pt-2 border-t border-slate-200 text-[10.5px] text-slate-600">
+                            <span className="font-semibold text-slate-700">Remarques atelier : </span>
+                            <span className="italic">{doc.notes}</span>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -1069,6 +1071,14 @@ export const DocumentViewerModal: React.FC = () => {
                               </span>
                             </div>
                           )}
+                        </div>
+
+                        {/* Mode de règlement */}
+                        <div className="flex justify-between items-center text-slate-700 text-xs pt-1.5 border-t border-slate-200">
+                          <span className="font-semibold text-slate-600 text-[11px]">Mode de règlement :</span>
+                          <span className="font-bold text-slate-900 font-sans text-xs">
+                            {formatPaymentMethod(doc.paymentMethod)}
+                          </span>
                         </div>
 
                         {/* Tampon facture acquittée si payée */}
@@ -1474,7 +1484,7 @@ export const DocumentViewerModal: React.FC = () => {
                   <strong>Mentions légales & pénalités de retard :</strong> En application de l'article L. 441-10 du Code de commerce, tout retard de paiement donne lieu de plein droit et sans mise en demeure préalable à des pénalités d'un taux égal au taux de refinancement de la BCE majoré de 10 points. Une indemnité forfaitaire pour frais de recouvrement de 40 € est due de plein droit pour les professionnels (art. D. 441-5 C. com.). Pas d'escompte pour paiement anticipé.
                 </p>
                 <p>
-                  <strong>Clause de réserve de propriété :</strong> Les pièces et fournitures livrées demeurent la propriété du vendeur jusqu'au complet paiement du prix (Loi n° 80-335 du 12 mai 1980). Pièces de rechange issues de l'économie circulaire (PIEC) proposées conformément à l'article L. 224-67 du Code de la consommation. Membre d'un centre de gestion agréé acceptant les règlements par chèque ou carte bancaire.
+                  <strong>Clause de réserve de propriété :</strong> Les pièces et fournitures livrées demeurent la propriété du vendeur jusqu'au complet paiement du prix (Loi n° 80-335 du 12 mai 1980). Pièces de rechange issues de l'économie circulaire (PIEC) proposées conformément à l'article L. 224-67 du Code de la consommation.
                 </p>
                 <div className="flex justify-between items-center text-[8px] text-slate-400 pt-1 border-t border-slate-200 mt-1 font-medium">
                   <span>{garage.name} · SIRET {garage.siret} · RCS {garage.rcsNumber || 'Lyon'} · TVA {garage.tvaNumber}</span>
