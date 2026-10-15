@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { CashTransaction, CashDayClose } from '../../types';
 import { formatDate, formatDateLong, formatDateTime, formatDateFull } from '../../utils/dateUtils';
+import { printElement, downloadPrintableHtml } from '../../utils/printUtils';
 
 export const CashRegisterTab: React.FC = () => {
   const {
@@ -1665,7 +1666,17 @@ export const CashRegisterTab: React.FC = () => {
 
             <div className="flex gap-2 pt-2 no-print">
               <button
-                onClick={() => window.print()}
+                type="button"
+                onClick={() => downloadPrintableHtml('printable-receipt', `Ticket_Caisse_${printedReceipt.id}`, `Ticket de Caisse #${printedReceipt.id}`)}
+                className="px-3 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 flex items-center justify-center gap-1.5 text-xs font-semibold"
+                title="Télécharger le ticket"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Télécharger</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => printElement('printable-receipt', `Ticket de Caisse #${printedReceipt.id}`)}
                 className="flex-1 py-2 text-white font-semibold rounded-lg shadow-xs flex items-center justify-center gap-1.5"
                 style={{ backgroundColor: theme.primaryColor }}
               >
@@ -1763,7 +1774,17 @@ export const CashRegisterTab: React.FC = () => {
 
             <div className="flex gap-2 pt-2 no-print">
               <button
-                onClick={() => window.print()}
+                type="button"
+                onClick={() => downloadPrintableHtml('printable-z', `Rapport_Z_${printedZClose.date}`, `Rapport Z Clôture ${formatDate(printedZClose.date)}`)}
+                className="px-3 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 flex items-center justify-center gap-1.5 text-xs font-semibold"
+                title="Télécharger le rapport Z"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Télécharger</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => printElement('printable-z', `Rapport Z Clôture ${formatDate(printedZClose.date)}`)}
                 className="flex-1 py-2 text-white font-semibold rounded-lg shadow-xs flex items-center justify-center gap-1.5"
                 style={{ backgroundColor: theme.primaryColor }}
               >
@@ -1990,7 +2011,16 @@ export const CashRegisterTab: React.FC = () => {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => window.print()}
+                  onClick={() => downloadPrintableHtml('printable-daily-settlements', `Bordereau_Reglements_${todayDateStr}`, `Bordereau des Règlements ${todayDateStr}`)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-300 text-slate-700 rounded-lg font-semibold hover:bg-slate-100 transition-colors shadow-2xs"
+                  title="Télécharger le bordereau au format HTML imprimable"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Télécharger</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => printElement('printable-daily-settlements', `Bordereau des Règlements ${todayDateStr}`)}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-lg font-semibold hover:bg-slate-800 transition-colors shadow-2xs"
                 >
                   <Printer className="w-4 h-4" />

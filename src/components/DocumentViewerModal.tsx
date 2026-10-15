@@ -14,12 +14,13 @@ import {
   Wrench,
   CheckSquare,
   ShieldCheck,
-  Package,
-  Truck,
-  Eye,
   FileCheck,
+  Download,
+  Info,
+  CheckCircle2,
 } from 'lucide-react';
 import { formatDate } from '../utils/dateUtils';
+import { printElement, downloadPrintableHtml } from '../utils/printUtils';
 
 type ViewLayoutMode = 'official' | 'workshop_card' | 'handover';
 
@@ -38,16 +39,15 @@ export const DocumentViewerModal: React.FC = () => {
     theme,
     clients,
     vehicles,
-    mechanics,
-    workshopBays,
     convertQuoteToOrder,
     convertOrderToInvoice,
     setActiveTab,
   } = useApp();
 
   const [layoutMode, setLayoutMode] = useState<ViewLayoutMode>('official');
-  const [zoomLevel, setZoomLevel] = useState<number>(100); // 70, 85, 100, 115
+  const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [showMarginGuide, setShowMarginGuide] = useState<boolean>(false);
+  const [printFeedback, setPrintFeedback] = useState<string | null>(null);
 
   // If neither a garage document nor a supplier order is active, return null
   if (!viewingDocument && !viewingSupplierOrder) return null;
@@ -137,8 +137,35 @@ export const DocumentViewerModal: React.FC = () => {
     setViewingSupplierOrder(null);
   };
 
+  const currentDocTitle = isSupplierOrder
+    ? `Commande Fournisseur ${supOrder?.orderNumber}`
+    : `${typeLabel} ${doc?.referenceNumber}`;
+
+  const currentDocFilename = isSupplierOrder
+    ? `Commande_Fournisseur_${supOrder?.orderNumber || 'SO'}`
+    : `${typeLabel}_${doc?.referenceNumber || 'DOC'}`;
+
   const handlePrint = () => {
-    window.print();
+    const result = printElement('printable-document', currentDocTitle);
+    setPrintFeedback(
+      result.message ||
+        "Ordre d'impression envoyé. Si votre navigateur bloque la fenêtre popup, utilisez le bouton « Télécharger la feuille »."
+    );
+    setTimeout(() => setPrintFeedback(null), 8000);
+  };
+
+  const handleDownloadHtml = () => {
+    const ok = downloadPrintableHtml(
+      'printable-document',
+      currentDocFilename,
+      currentDocTitle
+    );
+    if (ok) {
+      setPrintFeedback(
+        "Fichier de la feuille téléchargé ! Vous pouvez l'ouvrir directement dans votre navigateur pour l'imprimer sans aucune restriction."
+      );
+      setTimeout(() => setPrintFeedback(null), 8000);
+    }
   };
 
   const handleConvertToOrder = () => {
@@ -158,12 +185,12 @@ export const DocumentViewerModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto no-print">
-      <div className="relative w-full max-w-5xl bg-slate-900 rounded-2xl shadow-2xl border border-slate-700/80 overflow-hidden my-4 flex flex-col max-h-[96vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-xs p-1 sm:p-3 overflow-y-auto no-print">
+      <div className="relative w-full max-w-6xl bg-slate-900 rounded-2xl shadow-2xl border border-slate-700 overflow-hidden my-2 flex flex-col max-h-[98vh]">
         {/* Top Control Bar (Never printed) */}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-slate-800 bg-slate-900 text-white shrink-0 no-print">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-800 bg-slate-900 text-white shrink-0 no-print">
           {/* Left: Document Badge and Title */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <span
               className="text-xs font-black uppercase tracking-wider px-2.5 py-1 rounded text-white shadow-xs"
               style={{
@@ -182,13 +209,13 @@ export const DocumentViewerModal: React.FC = () => {
             </span>
 
             {/* A4 Format Badge */}
-            <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded">
+            <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-950/80 border border-emerald-800 px-2 py-0.5 rounded">
               <FileCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Format A4 (210 × 297 mm)</span>
+              <span>Aperçu Feuille A4 (210 × 297 mm)</span>
             </span>
 
             {/* Sub-label */}
-            <span className="text-xs text-slate-400 hidden xl:inline truncate max-w-[220px]">
+            <span className="text-xs text-slate-400 hidden xl:inline truncate max-w-[200px]">
               {isSupplierOrder
                 ? `Fournisseur : ${supplier?.name || 'N/A'}`
                 : `Client : ${
@@ -202,7 +229,7 @@ export const DocumentViewerModal: React.FC = () => {
           </div>
 
           {/* Center: Switch between ALL Documents */}
-          <div className="flex items-center gap-1 bg-slate-800/90 border border-slate-700 rounded-lg p-0.5 shadow-inner">
+          <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-lg p-0.5 shadow-inner">
             <button
               type="button"
               onClick={handlePrevDoc}
@@ -215,7 +242,7 @@ export const DocumentViewerModal: React.FC = () => {
             <select
               value={isSupplierOrder ? `sup_${supOrder?.id}` : doc?.id || ''}
               onChange={(e) => handleSelectDocument(e.target.value)}
-              className="bg-transparent text-[11px] font-semibold text-slate-100 focus:outline-hidden py-1 px-1.5 cursor-pointer max-w-[220px] sm:max-w-[300px] truncate"
+              className="bg-transparent text-[11px] font-semibold text-slate-100 focus:outline-hidden py-1 px-1 cursor-pointer max-w-[200px] sm:max-w-[280px] truncate"
               title="Ouvrir un autre document (Devis, Commandes, Factures, Fournisseurs)"
             >
               <optgroup label="Devis Chiffrés Atelier">
@@ -291,102 +318,101 @@ export const DocumentViewerModal: React.FC = () => {
             </button>
           </div>
 
-          {/* Right: Print, Edit, Conversions and Close */}
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Garage Document Specific Controls */}
+          {/* Right: Actions, Layout, Zoom, and Print */}
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            {/* View Layout Mode (Official / Workshop Card / Handover) */}
             {!isSupplierOrder && doc && (
-              <>
-                {/* View Layout Mode (Official / Workshop Card / Handover) */}
-                <div className="hidden lg:flex items-center gap-0.5 bg-slate-800 p-0.5 rounded-lg border border-slate-700 text-[11px]">
-                  <button
-                    type="button"
-                    onClick={() => setLayoutMode('official')}
-                    className={`px-2.5 py-1 rounded font-medium transition-colors ${
-                      layoutMode === 'official'
-                        ? 'bg-slate-700 text-white shadow-2xs font-bold'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                    title="Aperçu du document officiel complet avec mentions légales et tarifs"
-                  >
-                    Officiel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLayoutMode('workshop_card')}
-                    className={`px-2.5 py-1 rounded font-medium flex items-center gap-1 transition-colors ${
-                      layoutMode === 'workshop_card'
-                        ? 'bg-slate-700 text-white shadow-2xs font-bold'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                    title="Fiche d'intervention atelier / Ordre de Réparation A4 avec checklist de sécurité"
-                  >
-                    <Wrench className="w-3 h-3 text-amber-400" />
-                    <span>Fiche Atelier</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLayoutMode('handover')}
-                    className={`px-2.5 py-1 rounded font-medium transition-colors ${
-                      layoutMode === 'handover'
-                        ? 'bg-slate-700 text-white shadow-2xs font-bold'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                    title="Bon de livraison et restitution du véhicule au client"
-                  >
-                    Restitution
-                  </button>
-                </div>
-
-                {/* Edit document button */}
+              <div className="hidden lg:flex items-center gap-0.5 bg-slate-800 p-0.5 rounded-lg border border-slate-700 text-[11px]">
                 <button
                   type="button"
-                  onClick={() => setEditingDocument(doc)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
-                  title="Modifier les pièces, main d'œuvre, tarifs, client ou mentions de ce document"
+                  onClick={() => setLayoutMode('official')}
+                  className={`px-2 py-1 rounded font-medium transition-colors ${
+                    layoutMode === 'official'
+                      ? 'bg-slate-700 text-white shadow-2xs font-bold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Document officiel pour le client avec tarifs et mentions"
                 >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Modifier</span>
+                  Officiel
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setLayoutMode('workshop_card')}
+                  className={`px-2 py-1 rounded font-medium flex items-center gap-1 transition-colors ${
+                    layoutMode === 'workshop_card'
+                      ? 'bg-slate-700 text-white shadow-2xs font-bold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Fiche technique pour les mécaniciens avec checklist de contrôle"
+                >
+                  <Wrench className="w-3 h-3 text-amber-400" />
+                  <span>Fiche Atelier</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLayoutMode('handover')}
+                  className={`px-2 py-1 rounded font-medium transition-colors ${
+                    layoutMode === 'handover'
+                      ? 'bg-slate-700 text-white shadow-2xs font-bold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Bon de restitution du véhicule et des clés"
+                >
+                  Restitution
+                </button>
+              </div>
+            )}
 
-                {/* Workflow conversions */}
-                {isQuote && doc.status !== 'refuse' && (
-                  <button
-                    type="button"
-                    onClick={handleConvertToOrder}
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
-                    title="Transformer ce devis en bon de commande officiel"
-                  >
-                    <span className="hidden sm:inline">En Bon Cde</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                )}
+            {/* Edit button */}
+            {!isSupplierOrder && doc && (
+              <button
+                type="button"
+                onClick={() => setEditingDocument(doc)}
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
+                title="Modifier les lignes, prix ou informations de ce document"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Modifier</span>
+              </button>
+            )}
 
-                {isOrder && (
-                  <button
-                    type="button"
-                    onClick={handleConvertToInvoice}
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
-                    title="Émettre la facture finale à partir de ce bon"
-                  >
-                    <span className="hidden sm:inline">Facturer</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                )}
+            {/* Workflow conversions */}
+            {!isSupplierOrder && doc && isQuote && doc.status !== 'refuse' && (
+              <button
+                type="button"
+                onClick={handleConvertToOrder}
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
+                title="Convertir ce devis en bon de commande officiel"
+              >
+                <span className="hidden sm:inline">En Bon Cde</span>
+                <ArrowRight className="w-3 h-3" />
+              </button>
+            )}
 
-                {isInvoice && doc.status !== 'paye' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleClose();
-                      setActiveTab('cash');
-                    }}
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
-                    title="Encaisser cette facture en caisse"
-                  >
-                    <span>Encaisser</span>
-                  </button>
-                )}
-              </>
+            {!isSupplierOrder && doc && isOrder && (
+              <button
+                type="button"
+                onClick={handleConvertToInvoice}
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
+                title="Générer la facture finale"
+              >
+                <span className="hidden sm:inline">Facturer</span>
+                <ArrowRight className="w-3 h-3" />
+              </button>
+            )}
+
+            {!isSupplierOrder && doc && isInvoice && doc.status !== 'paye' && (
+              <button
+                type="button"
+                onClick={() => {
+                  handleClose();
+                  setActiveTab('cash');
+                }}
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
+                title="Encaisser cette facture en caisse"
+              >
+                <span>Encaisser</span>
+              </button>
             )}
 
             {/* Zoom Controls */}
@@ -399,24 +425,16 @@ export const DocumentViewerModal: React.FC = () => {
               >
                 <ZoomOut className="w-3.5 h-3.5" />
               </button>
-              <span className="tabular-nums font-mono text-[11px] w-10 text-center font-bold">
+              <span className="tabular-nums font-mono text-[11px] w-9 text-center font-bold">
                 {zoomLevel}%
               </span>
               <button
                 type="button"
-                onClick={() => setZoomLevel((prev) => Math.min(prev + 15, 130))}
+                onClick={() => setZoomLevel((prev) => Math.min(prev + 15, 125))}
                 className="hover:text-white p-0.5"
                 title="Zoomer"
               >
                 <ZoomIn className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setZoomLevel(100)}
-                className="text-[10px] text-slate-400 hover:text-white ml-1 px-1 py-0.5 rounded bg-slate-700/60"
-                title="Taille réelle A4 (100%)"
-              >
-                1:1
               </button>
             </div>
 
@@ -426,7 +444,7 @@ export const DocumentViewerModal: React.FC = () => {
               onClick={() => setShowMarginGuide(!showMarginGuide)}
               className={`hidden xl:flex items-center gap-1 px-2 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
                 showMarginGuide
-                  ? 'bg-emerald-950/80 border-emerald-600 text-emerald-300'
+                  ? 'bg-emerald-950 border-emerald-500 text-emerald-300'
                   : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
               }`}
               title="Afficher les repères de marges d'impression A4 standard (15 mm)"
@@ -435,43 +453,26 @@ export const DocumentViewerModal: React.FC = () => {
               <span>Marges A4</span>
             </button>
 
-            {/* Direct Logo Resizer */}
-            <div className="hidden 2xl:flex items-center gap-1 px-2 py-1 bg-slate-800 rounded-lg border border-slate-700 text-xs">
-              <span className="text-slate-400 text-[10px]">Logo:</span>
-              <button
-                type="button"
-                onClick={() =>
-                  updateGarage({ logoSize: Math.max((garage.logoSize || 140) - 15, 50) })
-                }
-                className="w-4 h-4 flex items-center justify-center bg-slate-700 hover:bg-slate-600 rounded text-slate-200 text-xs font-bold"
-                title="Diminuer le logo"
-              >
-                -
-              </button>
-              <span className="font-mono font-bold text-[10px] w-9 text-center tabular-nums text-slate-200">
-                {garage.logoSize || 140}px
-              </span>
-              <button
-                type="button"
-                onClick={() =>
-                  updateGarage({ logoSize: Math.min((garage.logoSize || 140) + 15, 320) })
-                }
-                className="w-4 h-4 flex items-center justify-center bg-slate-700 hover:bg-slate-600 rounded text-slate-200 text-xs font-bold"
-                title="Agrandir le logo"
-              >
-                +
-              </button>
-            </div>
+            {/* Download Standalone HTML/PDF Button */}
+            <button
+              type="button"
+              onClick={handleDownloadHtml}
+              className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 hover:text-white text-xs font-semibold rounded-lg transition-colors"
+              title="Télécharger la feuille au format prêt à imprimer (ouvre directement l'impression dans votre navigateur)"
+            >
+              <Download className="w-3.5 h-3.5 text-sky-400" />
+              <span className="hidden sm:inline">Télécharger la Feuille</span>
+            </button>
 
-            {/* Big Print / PDF Button */}
+            {/* Primary Print Button */}
             <button
               type="button"
               onClick={handlePrint}
               className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow-md hover:shadow-lg transition-all"
-              title="Lancer l'impression au format A4 ou enregistrer en PDF officiel"
+              title="Lancer l'impression directe de la feuille A4"
             >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Imprimer en A4 / PDF</span>
+              <Printer className="w-4 h-4" />
+              <span>Imprimer</span>
             </button>
 
             {/* Close Button */}
@@ -479,15 +480,43 @@ export const DocumentViewerModal: React.FC = () => {
               type="button"
               onClick={handleClose}
               className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors ml-1"
-              title="Fermer l'aperçu A4"
+              title="Fermer l'aperçu"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Paper Workspace Preview Container */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-950/70 flex justify-center items-start">
+        {/* Feedback / Instructions banner if print is clicked */}
+        {printFeedback && (
+          <div className="bg-emerald-900/90 border-b border-emerald-700 text-emerald-100 text-xs px-4 py-2.5 flex items-center justify-between gap-3 animate-fade-in no-print">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />
+              <span>{printFeedback}</span>
+            </div>
+            <button
+              onClick={() => setPrintFeedback(null)}
+              className="text-emerald-300 hover:text-white text-[11px] underline"
+            >
+              Masquer
+            </button>
+          </div>
+        )}
+
+        {/* Realistic Paper Desk Workspace */}
+        <div className="flex-1 overflow-y-auto p-3 sm:p-8 bg-slate-300/80 flex flex-col items-center justify-start">
+          {/* Header of the physical sheet */}
+          <div className="w-full max-w-[210mm] flex items-center justify-between text-xs text-slate-600 mb-2 px-1 no-print">
+            <div className="flex items-center gap-1.5 font-semibold text-slate-800">
+              <FileCheck className="w-4 h-4 text-emerald-700" />
+              <span>Feuille A4 prête pour l'impression (210 × 297 mm)</span>
+            </div>
+            <div className="flex items-center gap-3 text-[11px] text-slate-500">
+              <span>Échelle : {zoomLevel}%</span>
+              <span>1 Page · Portrait</span>
+            </div>
+          </div>
+
           <div
             style={{
               transform: zoomLevel !== 100 ? `scale(${zoomLevel / 100})` : undefined,
@@ -496,11 +525,11 @@ export const DocumentViewerModal: React.FC = () => {
             }}
             className="w-full max-w-[210mm] transition-all"
           >
-            {/* The Real A4 Sheet of Paper */}
+            {/* The Real A4 Sheet of Paper with drop shadow and crisp white look */}
             <div
               id="printable-document"
-              className={`w-full min-h-[297mm] mx-auto bg-white shadow-2xl ring-1 ring-slate-900/10 text-slate-900 text-xs sm:text-[13px] relative flex flex-col justify-between ${
-                showMarginGuide ? 'outline-2 outline-dashed outline-emerald-400/80' : ''
+              className={`w-full min-h-[297mm] mx-auto bg-white shadow-2xl ring-1 ring-slate-900/15 text-slate-900 text-xs sm:text-[13px] relative flex flex-col justify-between rounded-xs ${
+                showMarginGuide ? 'outline-2 outline-dashed outline-emerald-500' : ''
               }`}
               style={{
                 padding: '16mm 18mm',
@@ -510,7 +539,7 @@ export const DocumentViewerModal: React.FC = () => {
               {/* Optional Visual Margin Guide Helper Banner */}
               {showMarginGuide && (
                 <div className="print-guide-margin absolute top-1 left-2 text-[9px] font-mono text-emerald-600 font-bold opacity-75">
-                  [Guide d’impression A4 : marges d’impression 15 mm respectées]
+                  [Guide de marge A4 : zone d’impression standard 15 mm]
                 </div>
               )}
 
@@ -584,7 +613,7 @@ export const DocumentViewerModal: React.FC = () => {
                         className="px-4 py-2 rounded text-white inline-block text-left sm:text-right mb-2 shadow-xs"
                         style={{ backgroundColor: theme.documentHeaderColor }}
                       >
-                        <span className="text-[10px] tracking-widest font-semibold block uppercase opacity-80">
+                        <span className="text-[10px] tracking-widest font-semibold block uppercase opacity-85">
                           DOCUMENT OFFICIEL
                         </span>
                         <span className="text-xl sm:text-2xl font-black tracking-tight">
@@ -619,7 +648,7 @@ export const DocumentViewerModal: React.FC = () => {
                         )}
                         {doc.relatedQuoteId && (
                           <p className="text-[11px] text-slate-400">
-                            Réf devis d'origine associé
+                            Réf devis associé
                           </p>
                         )}
                       </div>
