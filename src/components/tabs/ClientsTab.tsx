@@ -16,6 +16,7 @@ import {
   X,
   PlusCircle,
   Eye,
+  Printer,
 } from 'lucide-react';
 import { Client, Vehicle } from '../../types';
 import { formatDate, formatDateLong } from '../../utils/dateUtils';
@@ -446,14 +447,26 @@ export const ClientsTab: React.FC = () => {
                     selectedClientDocuments.map((doc) => (
                       <div
                         key={doc.id}
-                        className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs"
+                        onClick={() => setViewingDocument(doc)}
+                        className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 hover:bg-sky-50/80 hover:border-sky-300 text-xs cursor-pointer transition-colors group"
+                        title={`Cliquer pour apercevoir ce document au format A4 et pouvoir l'imprimer (#${doc.referenceNumber})`}
                       >
                         <div className="flex items-center gap-3">
-                          <span className="font-mono font-bold text-slate-900">
+                          <span className="font-mono font-bold text-slate-900 group-hover:text-sky-600 transition-colors">
                             {doc.referenceNumber}
                           </span>
-                          <span className="text-[10px] uppercase font-semibold text-slate-500">
-                            {doc.type}
+                          <span
+                            className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded text-white"
+                            style={{
+                              backgroundColor:
+                                doc.type === 'devis'
+                                  ? '#475569'
+                                  : doc.type === 'bon_commande'
+                                  ? '#0284c7'
+                                  : '#059669',
+                            }}
+                          >
+                            {doc.type === 'devis' ? 'Devis' : doc.type === 'bon_commande' ? 'Bon Cde' : 'Facture'}
                           </span>
                           <span className="text-slate-400">·</span>
                           <span className="text-slate-500">{formatDate(doc.date)}</span>
@@ -465,15 +478,21 @@ export const ClientsTab: React.FC = () => {
                           </span>
                           <button
                             type="button"
-                            onClick={() => setViewingDocument(doc)}
-                            className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded transition-colors"
-                            title="Aperçu avant impression au format A4"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setViewingDocument(doc);
+                            }}
+                            className="p-1.5 text-emerald-700 hover:text-emerald-950 hover:bg-emerald-100 rounded transition-colors"
+                            title="Apercevoir et imprimer la feuille A4"
                           >
-                            <Eye className="w-4 h-4" />
+                            <Printer className="w-4 h-4 text-emerald-600" />
                           </button>
                           <button
                             type="button"
-                            onClick={() => setEditingDocument(doc)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingDocument(doc);
+                            }}
                             className="p-1.5 text-sky-600 hover:text-sky-900 hover:bg-sky-100 rounded transition-colors"
                             title="Modifier ce document"
                           >

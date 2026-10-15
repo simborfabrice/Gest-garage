@@ -28,6 +28,9 @@ export interface GarageSettings {
   siret: string;
   tvaNumber: string;
   nafCode: string;
+  rcsNumber?: string;
+  legalForm?: string;
+  insuranceName?: string;
   bankIban: string;
   bankBic: string;
   legalNotes: string;

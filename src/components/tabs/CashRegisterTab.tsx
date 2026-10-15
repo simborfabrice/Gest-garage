@@ -1605,8 +1605,8 @@ export const CashRegisterTab: React.FC = () => {
 
       {/* Printable Cash Receipt Modal */}
       {printedReceipt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto no-print">
-          <div className="relative w-full max-w-sm bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden my-8 p-6 text-center text-xs space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto document-modal-wrapper">
+          <div className="relative w-full max-w-sm bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden my-8 p-6 text-center text-xs space-y-4 document-modal-card">
             <div className="flex justify-end no-print">
               <button onClick={() => setPrintedReceipt(null)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
@@ -1690,8 +1690,8 @@ export const CashRegisterTab: React.FC = () => {
 
       {/* Printable Z Close Modal */}
       {printedZClose && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto no-print">
-          <div className="relative w-full max-w-md bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden my-8 p-6 text-xs space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto document-modal-wrapper">
+          <div className="relative w-full max-w-md bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden my-8 p-6 text-xs space-y-4 document-modal-card">
             <div className="flex justify-between items-center no-print">
               <h4 className="font-bold text-slate-900">Rapport Z de Clôture</h4>
               <button onClick={() => setPrintedZClose(null)} className="text-slate-400 hover:text-slate-600">
@@ -1999,8 +1999,8 @@ export const CashRegisterTab: React.FC = () => {
 
       {/* Modal Bordereau & Détail des Règlements Journaliers (Imprimable) */}
       {isDailySettlementsPrintOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto no-print">
-          <div className="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden my-8 p-6 text-xs space-y-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto document-modal-wrapper">
+          <div className="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden my-8 p-6 text-xs space-y-5 document-modal-card">
             <div className="flex items-center justify-between no-print border-b border-slate-200 pb-3">
               <div className="flex items-center gap-2">
                 <Receipt className="w-5 h-5 text-sky-600" />

@@ -5,7 +5,6 @@ import {
   Building2,
   Plus,
   FilePlus,
-  Printer,
   Calendar,
   DollarSign,
   Car,
@@ -20,7 +19,6 @@ export const Header: React.FC = () => {
     garage,
     theme,
     documents,
-    setViewingDocument,
     setIsThemeModalOpen,
     setIsGarageModalOpen,
     setIsBackupModalOpen,
@@ -146,23 +144,6 @@ export const Header: React.FC = () => {
           <Database className="w-3.5 h-3.5 text-indigo-600" />
           <span className="hidden lg:inline">Sauvegarde & Restauration</span>
           <span className="lg:hidden hidden sm:inline">Sauvegarde</span>
-        </button>
-
-        {/* Quick Open Documents Viewer Button (A4 Preview) */}
-        <button
-          onClick={() => {
-            if (documents.length > 0) {
-              setViewingDocument(documents[0]);
-            } else {
-              setActiveTab('documents');
-            }
-          }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
-          title="Aperçu avant impression au format A4 de tous les documents (devis, commandes, factures, fournisseurs)"
-        >
-          <Printer className="w-3.5 h-3.5 text-blue-600" />
-          <span className="hidden xl:inline">Aperçu Documents A4 ({documents.length})</span>
-          <span className="xl:hidden hidden sm:inline">Aperçu A4</span>
         </button>
 
         {/* Quick New Document Shortcut */}

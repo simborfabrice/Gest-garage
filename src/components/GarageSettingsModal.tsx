@@ -384,6 +384,45 @@ export const GarageSettingsModal: React.FC = () => {
 
             <div>
               <label className="text-xs font-semibold text-slate-700 block mb-1">
+                Forme Juridique & Capital
+              </label>
+              <input
+                type="text"
+                placeholder="ex: SARL au capital de 25 000 €"
+                value={formData.legalForm || ''}
+                onChange={(e) => setFormData({ ...formData, legalForm: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:border-sky-500 focus:outline-hidden"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-700 block mb-1">
+                RCS / Répertoire des Métiers
+              </label>
+              <input
+                type="text"
+                placeholder="ex: RCS Lyon B 849 321 456"
+                value={formData.rcsNumber || ''}
+                onChange={(e) => setFormData({ ...formData, rcsNumber: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:border-sky-500 focus:outline-hidden"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-700 block mb-1">
+                Assurance RC Professionnelle & Décennale
+              </label>
+              <input
+                type="text"
+                placeholder="ex: AXA Pro N° 8492019"
+                value={formData.insuranceName || ''}
+                onChange={(e) => setFormData({ ...formData, insuranceName: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:border-sky-500 focus:outline-hidden"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-700 block mb-1">
                 Site Web
               </label>
               <input

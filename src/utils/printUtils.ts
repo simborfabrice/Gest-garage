@@ -5,112 +5,37 @@
 export const printElement = (
   elementId: string,
   docTitle: string = 'Document'
-): { success: boolean; message: string } => {
+): { success: boolean; message: string; requiresFallback?: boolean } => {
   try {
     const element = document.getElementById(elementId);
     if (!element) {
       window.print();
-      return { success: true, message: "Impression lancée via le navigateur." };
+      return { success: true, message: "Ordre d'impression envoyé au navigateur (Ctrl + P)." };
     }
 
-    // Try hidden iframe print first (often bypasses sandbox print blocking)
-    const existingIframe = document.getElementById('app-print-iframe');
-    if (existingIframe && existingIframe.parentNode) {
-      existingIframe.parentNode.removeChild(existingIframe);
-    }
-
-    const iframe = document.createElement('iframe');
-    iframe.id = 'app-print-iframe';
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    iframe.style.zIndex = '-9999';
-    iframe.setAttribute('aria-hidden', 'true');
-    document.body.appendChild(iframe);
-
-    // Extract all stylesheets and style tags
-    const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-      .map((el) => el.outerHTML)
-      .join('\n');
-
-    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (iframeDoc) {
-      iframeDoc.open();
-      iframeDoc.write(`
-        <!DOCTYPE html>
-        <html lang="fr">
-          <head>
-            <meta charset="utf-8" />
-            <title>${docTitle}</title>
-            ${styles}
-            <style>
-              @page {
-                size: A4 portrait;
-                margin: 10mm 10mm 10mm 10mm;
-              }
-              html, body {
-                background: white !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-              }
-              body {
-                padding: 10mm !important;
-                color: #0f172a !important;
-              }
-              .no-print {
-                display: none !important;
-              }
-            </style>
-          </head>
-          <body>
-            <div style="width: 100%; max-width: 210mm; margin: 0 auto; background: white;">
-              ${element.innerHTML}
-            </div>
-          </body>
-        </html>
-      `);
-      iframeDoc.close();
-
-      setTimeout(() => {
-        try {
-          iframe.contentWindow?.focus();
-          iframe.contentWindow?.print();
-        } catch (iframeErr) {
-          console.warn('Iframe print error, falling back to window.print():', iframeErr);
-          window.print();
-        }
-      }, 350);
-
-      // Clean up after 2 minutes
-      setTimeout(() => {
-        if (iframe && iframe.parentNode) {
-          iframe.parentNode.removeChild(iframe);
-        }
-      }, 120000);
-
-      return {
-        success: true,
-        message: "Fenêtre d'impression demandée.",
-      };
-    } else {
-      window.print();
-      return { success: true, message: "Impression lancée via le navigateur." };
-    }
-  } catch (err) {
-    console.warn('Print element fallback:', err);
+    // Direct window print is best when print media styles are properly configured
     try {
       window.print();
-      return { success: true, message: "Impression lancée via le navigateur." };
-    } catch {
       return {
-        success: false,
-        message: "Impression bloquée par le navigateur dans cette fenêtre.",
+        success: true,
+        message: "Boîte d'impression demandée (raccourci clavier : Ctrl + P). Si le navigateur bloque la fenêtre, utilisez « Télécharger Feuille ».",
+      };
+    } catch (printErr) {
+      console.warn('Direct window.print blocked or failed:', printErr);
+      downloadPrintableHtml(elementId, `${docTitle.replace(/[^a-zA-Z0-9_-]/g, '_')}_A4`, docTitle);
+      return {
+        success: true,
+        requiresFallback: true,
+        message: "L'impression a été redirigée vers la feuille autonome téléchargée prête à imprimer.",
       };
     }
+  } catch (err) {
+    console.warn('Print element fallback error:', err);
+    return {
+      success: false,
+      requiresFallback: true,
+      message: "Utilisez « Télécharger Feuille » pour ouvrir et imprimer directement ce document.",
+    };
   }
 };
 

@@ -11,18 +11,23 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
+  Minimize2,
   Wrench,
   CheckSquare,
   ShieldCheck,
   FileCheck,
   Download,
-  Info,
   CheckCircle2,
+  Building,
+  Car,
+  Receipt,
+  Stamp,
+  Award,
 } from 'lucide-react';
 import { formatDate } from '../utils/dateUtils';
 import { printElement, downloadPrintableHtml } from '../utils/printUtils';
 
-type ViewLayoutMode = 'official' | 'workshop_card' | 'handover';
+type ViewLayoutMode = 'official_standard' | 'official_compact' | 'workshop_card' | 'handover';
 
 export const DocumentViewerModal: React.FC = () => {
   const {
@@ -44,13 +49,11 @@ export const DocumentViewerModal: React.FC = () => {
     setActiveTab,
   } = useApp();
 
-  const [layoutMode, setLayoutMode] = useState<ViewLayoutMode>('official');
+  const [layoutMode, setLayoutMode] = useState<ViewLayoutMode>('official_standard');
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [showMarginGuide, setShowMarginGuide] = useState<boolean>(false);
   const [printFeedback, setPrintFeedback] = useState<string | null>(null);
-
-  // If neither a garage document nor a supplier order is active, return null
-  if (!viewingDocument && !viewingSupplierOrder) return null;
+  const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
 
   const isSupplierOrder = !!viewingSupplierOrder && !viewingDocument;
 
@@ -64,6 +67,7 @@ export const DocumentViewerModal: React.FC = () => {
   const isInvoice = doc?.type === 'facture';
 
   const typeLabel = isQuote ? 'DEVIS' : isOrder ? 'BON DE COMMANDE' : 'FACTURE';
+  const docCode = isQuote ? 'DEV' : isOrder ? 'BC' : 'FAC';
 
   // Handles for Supplier Order
   const supOrder = viewingSupplierOrder;
@@ -149,10 +153,35 @@ export const DocumentViewerModal: React.FC = () => {
     const result = printElement('printable-document', currentDocTitle);
     setPrintFeedback(
       result.message ||
-        "Ordre d'impression envoyé. Si votre navigateur bloque la fenêtre popup, utilisez le bouton « Télécharger la feuille »."
+        "Ordre d'impression envoyé. Si votre navigateur bloque la boîte d'impression, utilisez le bouton « Télécharger la feuille »."
     );
-    setTimeout(() => setPrintFeedback(null), 8000);
+    setTimeout(() => setPrintFeedback(null), 10000);
   };
+
+  React.useEffect(() => {
+    if (!viewingDocument && !viewingSupplierOrder) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isFullScreen) {
+          setIsFullScreen(false);
+        } else {
+          handleClose();
+        }
+      } else if (e.key === 'ArrowLeft' && (e.ctrlKey || e.altKey)) {
+        e.preventDefault();
+        handlePrevDoc();
+      } else if (e.key === 'ArrowRight' && (e.ctrlKey || e.altKey)) {
+        e.preventDefault();
+        handleNextDoc();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        handlePrint();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [viewingDocument, viewingSupplierOrder, isFullScreen, currentNavIndex, allNavItems]);
 
   const handleDownloadHtml = () => {
     const ok = downloadPrintableHtml(
@@ -162,7 +191,7 @@ export const DocumentViewerModal: React.FC = () => {
     );
     if (ok) {
       setPrintFeedback(
-        "Fichier de la feuille téléchargé ! Vous pouvez l'ouvrir directement dans votre navigateur pour l'imprimer sans aucune restriction."
+        "Fichier de la feuille de facturation téléchargé ! Vous pouvez l'ouvrir dans votre navigateur pour l'imprimer sans blocage."
       );
       setTimeout(() => setPrintFeedback(null), 8000);
     }
@@ -184,11 +213,75 @@ export const DocumentViewerModal: React.FC = () => {
     }
   };
 
+  // If neither a garage document nor a supplier order is active, return null (after all Hooks)
+  if (!viewingDocument && !viewingSupplierOrder) return null;
+
+  // Group line items by VAT rate for official tax breakdown
+  const vatBreakdown: { [rate: number]: { baseHT: number; amountTVA: number } } = {};
+  if (doc) {
+    doc.items.forEach((it) => {
+      const lineHT =
+        it.quantity * it.unitPriceHT * (1 - (it.discountPercent || 0) / 100);
+      const rate = it.tvaRate || 20;
+      if (!vatBreakdown[rate]) {
+        vatBreakdown[rate] = { baseHT: 0, amountTVA: 0 };
+      }
+      vatBreakdown[rate].baseHT += lineHT;
+      vatBreakdown[rate].amountTVA += lineHT * (rate / 100);
+    });
+  }
+
+  // Calculate separate labor and parts subtotals
+  const partsSubtotalHT = doc
+    ? doc.items
+        .filter((it) => it.type === 'piece')
+        .reduce(
+          (sum, it) =>
+            sum +
+            it.quantity * it.unitPriceHT * (1 - (it.discountPercent || 0) / 100),
+          0
+        )
+    : 0;
+
+  const laborSubtotalHT = doc
+    ? doc.items
+        .filter((it) => it.type === 'main_oeuvre')
+        .reduce(
+          (sum, it) =>
+            sum +
+            it.quantity * it.unitPriceHT * (1 - (it.discountPercent || 0) / 100),
+          0
+        )
+    : 0;
+
+  const otherSubtotalHT = doc
+    ? doc.items
+        .filter((it) => it.type === 'forfait' || it.type === 'autre')
+        .reduce(
+          (sum, it) =>
+            sum +
+            it.quantity * it.unitPriceHT * (1 - (it.discountPercent || 0) / 100),
+          0
+        )
+    : 0;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-xs p-1 sm:p-3 overflow-y-auto no-print">
-      <div className="relative w-full max-w-6xl bg-slate-900 rounded-2xl shadow-2xl border border-slate-700 overflow-hidden my-2 flex flex-col max-h-[98vh]">
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center overflow-y-auto document-modal-wrapper ${
+        isFullScreen
+          ? 'p-0 bg-slate-200'
+          : 'bg-slate-900/90 backdrop-blur-xs p-1 sm:p-3'
+      }`}
+    >
+      <div
+        className={`relative flex flex-col document-modal-card ${
+          isFullScreen
+            ? 'w-full h-full min-h-screen bg-slate-200 rounded-none border-0 shadow-none my-0 max-h-none'
+            : 'w-full max-w-6xl bg-slate-900 rounded-2xl shadow-2xl border border-slate-700 overflow-hidden my-2 max-h-[98vh]'
+        }`}
+      >
         {/* Top Control Bar (Never printed) */}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-800 bg-slate-900 text-white shrink-0 no-print">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-800 bg-slate-900 text-white shrink-0 sticky top-0 z-20 no-print">
           {/* Left: Document Badge and Title */}
           <div className="flex items-center gap-2">
             <span
@@ -208,10 +301,10 @@ export const DocumentViewerModal: React.FC = () => {
                 : `${typeLabel} #${doc?.referenceNumber}`}
             </span>
 
-            {/* A4 Format Badge */}
+            {/* Standard Format Badge */}
             <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-950/80 border border-emerald-800 px-2 py-0.5 rounded">
               <FileCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Aperçu Feuille A4 (210 × 297 mm)</span>
+              <span>Format Facturation Type A4 (210 × 297 mm)</span>
             </span>
 
             {/* Sub-label */}
@@ -320,30 +413,30 @@ export const DocumentViewerModal: React.FC = () => {
 
           {/* Right: Actions, Layout, Zoom, and Print */}
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-            {/* View Layout Mode (Official / Workshop Card / Handover) */}
+            {/* View Layout Mode (Standard Automotive / Compact / Workshop Card / Handover) */}
             {!isSupplierOrder && doc && (
               <div className="hidden lg:flex items-center gap-0.5 bg-slate-800 p-0.5 rounded-lg border border-slate-700 text-[11px]">
                 <button
                   type="button"
-                  onClick={() => setLayoutMode('official')}
-                  className={`px-2 py-1 rounded font-medium transition-colors ${
-                    layoutMode === 'official'
+                  onClick={() => setLayoutMode('official_standard')}
+                  className={`px-2.5 py-1 rounded font-medium transition-colors ${
+                    layoutMode === 'official_standard'
                       ? 'bg-slate-700 text-white shadow-2xs font-bold'
                       : 'text-slate-400 hover:text-white'
                   }`}
-                  title="Document officiel pour le client avec tarifs et mentions"
+                  title="Facturation type standard française conforme (DGFiP, Code de commerce, ventilation TVA, cartouche véhicule)"
                 >
-                  Officiel
+                  Format Type
                 </button>
                 <button
                   type="button"
                   onClick={() => setLayoutMode('workshop_card')}
-                  className={`px-2 py-1 rounded font-medium flex items-center gap-1 transition-colors ${
+                  className={`px-2.5 py-1 rounded font-medium flex items-center gap-1 transition-colors ${
                     layoutMode === 'workshop_card'
                       ? 'bg-slate-700 text-white shadow-2xs font-bold'
                       : 'text-slate-400 hover:text-white'
                   }`}
-                  title="Fiche technique pour les mécaniciens avec checklist de contrôle"
+                  title="Fiche technique atelier avec checklist de sécurité"
                 >
                   <Wrench className="w-3 h-3 text-amber-400" />
                   <span>Fiche Atelier</span>
@@ -351,12 +444,12 @@ export const DocumentViewerModal: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setLayoutMode('handover')}
-                  className={`px-2 py-1 rounded font-medium transition-colors ${
+                  className={`px-2.5 py-1 rounded font-medium transition-colors ${
                     layoutMode === 'handover'
                       ? 'bg-slate-700 text-white shadow-2xs font-bold'
                       : 'text-slate-400 hover:text-white'
                   }`}
-                  title="Bon de restitution du véhicule et des clés"
+                  title="Bon de restitution du véhicule et PV de conformité"
                 >
                   Restitution
                 </button>
@@ -369,7 +462,7 @@ export const DocumentViewerModal: React.FC = () => {
                 type="button"
                 onClick={() => setEditingDocument(doc)}
                 className="flex items-center gap-1 px-2.5 py-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
-                title="Modifier les lignes, prix ou informations de ce document"
+                title="Modifier les pièces, tarifs ou informations de ce document"
               >
                 <Edit3 className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Modifier</span>
@@ -453,15 +546,39 @@ export const DocumentViewerModal: React.FC = () => {
               <span>Marges A4</span>
             </button>
 
+            {/* Full Screen View Toggle */}
+            <button
+              type="button"
+              onClick={() => setIsFullScreen(!isFullScreen)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors ${
+                isFullScreen
+                  ? 'bg-sky-600 border-sky-400 text-white shadow-xs'
+                  : 'bg-slate-800 border-slate-700 text-slate-200 hover:text-white'
+              }`}
+              title={isFullScreen ? "Quitter le plein écran" : "Voir la feuille en plein écran (maximiser sur l'écran)"}
+            >
+              {isFullScreen ? (
+                <>
+                  <Minimize2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Quitter Plein Écran</span>
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Plein Écran</span>
+                </>
+              )}
+            </button>
+
             {/* Download Standalone HTML/PDF Button */}
             <button
               type="button"
               onClick={handleDownloadHtml}
               className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 hover:text-white text-xs font-semibold rounded-lg transition-colors"
-              title="Télécharger la feuille au format prêt à imprimer (ouvre directement l'impression dans votre navigateur)"
+              title="Télécharger la feuille au format prêt à imprimer (ouvre l'impression directe dans votre navigateur)"
             >
               <Download className="w-3.5 h-3.5 text-sky-400" />
-              <span className="hidden sm:inline">Télécharger la Feuille</span>
+              <span className="hidden sm:inline">Télécharger Feuille</span>
             </button>
 
             {/* Primary Print Button */}
@@ -469,10 +586,10 @@ export const DocumentViewerModal: React.FC = () => {
               type="button"
               onClick={handlePrint}
               className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow-md hover:shadow-lg transition-all"
-              title="Lancer l'impression directe de la feuille A4"
+              title="Lancer l'impression directe de la feuille A4 (Ctrl + P)"
             >
               <Printer className="w-4 h-4" />
-              <span>Imprimer</span>
+              <span>Imprimer A4</span>
             </button>
 
             {/* Close Button */}
@@ -494,25 +611,60 @@ export const DocumentViewerModal: React.FC = () => {
               <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />
               <span>{printFeedback}</span>
             </div>
-            <button
-              onClick={() => setPrintFeedback(null)}
-              className="text-emerald-300 hover:text-white text-[11px] underline"
-            >
-              Masquer
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleDownloadHtml}
+                className="px-2 py-0.5 bg-emerald-800 hover:bg-emerald-700 text-white rounded text-[11px] font-semibold border border-emerald-600"
+              >
+                Télécharger la feuille
+              </button>
+              <button
+                onClick={() => setPrintFeedback(null)}
+                className="text-emerald-300 hover:text-white text-[11px] underline ml-1"
+              >
+                Fermer
+              </button>
+            </div>
           </div>
         )}
 
         {/* Realistic Paper Desk Workspace */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-8 bg-slate-300/80 flex flex-col items-center justify-start">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-8 bg-slate-200 flex flex-col items-center justify-start document-modal-body">
           {/* Header of the physical sheet */}
-          <div className="w-full max-w-[210mm] flex items-center justify-between text-xs text-slate-600 mb-2 px-1 no-print">
+          <div className="w-full max-w-[210mm] flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 mb-2 px-1 no-print">
             <div className="flex items-center gap-1.5 font-semibold text-slate-800">
               <FileCheck className="w-4 h-4 text-emerald-700" />
-              <span>Feuille A4 prête pour l'impression (210 × 297 mm)</span>
+              <span>Format de Facturation Type A4 (210 × 297 mm) — Prêt pour impression officielle</span>
             </div>
-            <div className="flex items-center gap-3 text-[11px] text-slate-500">
+            <div className="flex items-center gap-2 text-[11px] text-slate-600">
+              <button
+                type="button"
+                onClick={() => setZoomLevel(100)}
+                className={`px-1.5 py-0.5 rounded border ${
+                  zoomLevel === 100
+                    ? 'bg-slate-800 text-white border-slate-700'
+                    : 'bg-white hover:bg-slate-100 border-slate-300 text-slate-700'
+                }`}
+                title="Taille réelle 100%"
+              >
+                100% Réel
+              </button>
+              <button
+                type="button"
+                onClick={() => setZoomLevel(85)}
+                className={`px-1.5 py-0.5 rounded border ${
+                  zoomLevel === 85
+                    ? 'bg-slate-800 text-white border-slate-700'
+                    : 'bg-white hover:bg-slate-100 border-slate-300 text-slate-700'
+                }`}
+                title="Ajuster à l'écran"
+              >
+                Ajuster
+              </button>
+              <span className="text-slate-400">·</span>
               <span>Échelle : {zoomLevel}%</span>
+              <span>·</span>
               <span>1 Page · Portrait</span>
             </div>
           </div>
@@ -528,11 +680,11 @@ export const DocumentViewerModal: React.FC = () => {
             {/* The Real A4 Sheet of Paper with drop shadow and crisp white look */}
             <div
               id="printable-document"
-              className={`w-full min-h-[297mm] mx-auto bg-white shadow-2xl ring-1 ring-slate-900/15 text-slate-900 text-xs sm:text-[13px] relative flex flex-col justify-between rounded-xs ${
+              className={`w-full min-h-[297mm] mx-auto bg-white shadow-2xl ring-1 ring-slate-900/15 text-slate-900 text-xs sm:text-[12px] relative flex flex-col justify-between rounded-xs ${
                 showMarginGuide ? 'outline-2 outline-dashed outline-emerald-500' : ''
               }`}
               style={{
-                padding: '16mm 18mm',
+                padding: '14mm 16mm',
                 boxSizing: 'border-box',
               }}
             >
@@ -543,257 +695,238 @@ export const DocumentViewerModal: React.FC = () => {
                 </div>
               )}
 
-              {/* -------------------- 1. GARAGE DOCUMENT (OFFICIAL) -------------------- */}
-              {!isSupplierOrder && doc && layoutMode === 'official' && (
-                <div className="space-y-6">
-                  {/* Header: Garage Logo & Details vs Document Type Box */}
-                  <div
-                    className="flex flex-col sm:flex-row items-start justify-between gap-6 pb-6 border-b-2"
-                    style={{ borderColor: theme.documentHeaderColor }}
-                  >
-                    {/* Left: Logo & Garage identity */}
-                    <div className="flex items-start gap-4">
-                      {garage.logoUrl ? (
-                        <img
-                          src={garage.logoUrl}
-                          alt={garage.name}
-                          className="object-contain shrink-0 bg-transparent"
-                          style={{
-                            width: `${garage.logoSize || 140}px`,
-                            maxHeight: `${Math.round((garage.logoSize || 140) * 1.15)}px`,
-                            height: 'auto',
-                            border: 'none',
-                            outline: 'none',
-                            boxShadow: 'none',
-                            background: 'transparent',
-                          }}
-                        />
-                      ) : (
-                        <div
-                          className="bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 border border-slate-200 shrink-0"
-                          style={{
-                            width: `${garage.logoSize || 140}px`,
-                            height: `${Math.min(garage.logoSize || 140, 140)}px`,
-                          }}
-                        >
-                          <FileText className="w-10 h-10" />
-                        </div>
-                      )}
-                      <div>
-                        <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                          {garage.name}
-                        </h1>
-                        {garage.slogan && (
-                          <p className="text-xs font-medium text-slate-600 mt-0.5">
-                            {garage.slogan}
-                          </p>
+              {/* -------------------- 1. FORMAT DE FACTURATION TYPE OFFICIEL -------------------- */}
+              {!isSupplierOrder && doc && layoutMode === 'official_standard' && (
+                <div className="space-y-4">
+                  {/* TOP HEADER: Émetteur (Garage) & Destinataire (Client) - Norme AFNOR */}
+                  <div className="grid grid-cols-12 gap-6 items-start pb-4 border-b border-slate-300">
+                    {/* ÉMETTEUR (GARAGE) - Col 7 */}
+                    <div className="col-span-7 space-y-1.5">
+                      <div className="flex items-start gap-3">
+                        {garage.logoUrl && (
+                          <img
+                            src={garage.logoUrl}
+                            alt={garage.name}
+                            className="object-contain shrink-0 bg-transparent"
+                            style={{
+                              width: `${garage.logoSize || 130}px`,
+                              maxHeight: `${Math.round((garage.logoSize || 130) * 1.1)}px`,
+                              height: 'auto',
+                            }}
+                          />
                         )}
-                        <div className="text-xs text-slate-500 mt-2 space-y-0.5 leading-relaxed">
-                          <p>
-                            {garage.address}, {garage.postalCode} {garage.city}
+                        <div>
+                          <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight uppercase leading-tight">
+                            {garage.name}
+                          </h1>
+                          <p className="text-[11px] font-semibold text-slate-700">
+                            {garage.legalForm || 'Société de Mécanique Automobile'}
                           </p>
-                          <p>
-                            Tél :{' '}
-                            <span className="font-semibold text-slate-700">
-                              {garage.phone}
-                            </span>{' '}
-                            · Email : {garage.email}
-                          </p>
-                          <p>
-                            SIRET : {garage.siret} · N° TVA : {garage.tvaNumber}
-                          </p>
-                          {garage.nafCode && <p>Code NAF : {garage.nafCode}</p>}
+                          {garage.slogan && (
+                            <p className="text-[10.5px] italic text-slate-500">
+                              {garage.slogan}
+                            </p>
+                          )}
                         </div>
                       </div>
-                    </div>
 
-                    {/* Right: Document Identity Banner */}
-                    <div className="sm:text-right shrink-0 w-full sm:w-auto">
-                      <div
-                        className="px-4 py-2 rounded text-white inline-block text-left sm:text-right mb-2 shadow-xs"
-                        style={{ backgroundColor: theme.documentHeaderColor }}
-                      >
-                        <span className="text-[10px] tracking-widest font-semibold block uppercase opacity-85">
-                          DOCUMENT OFFICIEL
-                        </span>
-                        <span className="text-xl sm:text-2xl font-black tracking-tight">
-                          {typeLabel}
-                        </span>
-                      </div>
-                      <p className="text-base font-bold font-mono text-slate-900">
-                        N° {doc.referenceNumber}
-                      </p>
-                      <div className="text-xs text-slate-600 mt-1 space-y-0.5">
+                      <div className="text-[10.5px] text-slate-600 space-y-0.5 pt-1 leading-relaxed">
+                        <p>{garage.address}, {garage.postalCode} {garage.city}</p>
                         <p>
-                          Date d'émission :{' '}
-                          <span className="font-semibold text-slate-900">
-                            {formatDate(doc.date)}
-                          </span>
+                          Tél : <span className="font-semibold text-slate-800">{garage.phone}</span>
+                          {' · '}Email : {garage.email}
                         </p>
-                        {isQuote && doc.validityDate && (
-                          <p>
-                            Validité jusqu'au :{' '}
-                            <span className="font-semibold text-slate-900">
-                              {formatDate(doc.validityDate)}
-                            </span>
-                          </p>
-                        )}
-                        {isInvoice && doc.dueDate && (
-                          <p>
-                            Date d'échéance :{' '}
-                            <span className="font-semibold text-slate-900">
-                              {formatDate(doc.dueDate)}
-                            </span>
-                          </p>
-                        )}
-                        {doc.relatedQuoteId && (
-                          <p className="text-[11px] text-slate-400">
-                            Réf devis associé
+                        <p className="font-mono text-[10px] text-slate-600">
+                          SIRET : {garage.siret} · Code NAF : {garage.nafCode}
+                        </p>
+                        <p className="font-mono text-[10px] text-slate-600">
+                          {garage.rcsNumber ? `${garage.rcsNumber} · ` : ''}N° TVA : {garage.tvaNumber}
+                        </p>
+                        {garage.insuranceName && (
+                          <p className="text-[9.5px] text-slate-500">
+                            Assurance : {garage.insuranceName}
                           </p>
                         )}
                       </div>
                     </div>
-                  </div>
 
-                  {/* Recipient Client & Vehicle Details */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-1">
-                    {/* Client Box */}
-                    <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                        CLIENT DESTINATAIRE
+                    {/* DESTINATAIRE (CLIENT) - Col 5 (Encadré pour enveloppe à fenêtre) */}
+                    <div className="col-span-5 p-3.5 rounded-lg border-2 border-slate-300 bg-slate-50/70 space-y-1">
+                      <span className="text-[9.5px] font-bold uppercase tracking-wider text-slate-500 block">
+                        {isQuote ? 'Devis établi pour :' : 'Facturé à :'}
                       </span>
                       {client ? (
-                        <div className="text-xs sm:text-sm space-y-1">
-                          <p className="font-bold text-slate-900 text-base">
+                        <div className="text-[11.5px] space-y-0.5">
+                          <p className="font-bold text-slate-950 text-sm">
                             {client.type === 'professionnel' && client.companyName ? (
                               <>
                                 {client.companyName}
-                                <span className="text-xs font-normal text-slate-500 block">
-                                  Attn: {client.firstName} {client.lastName}
+                                <span className="text-[11px] font-normal text-slate-600 block">
+                                  À l'attention de : {client.firstName} {client.lastName}
                                 </span>
                               </>
                             ) : (
                               `${client.firstName} ${client.lastName}`
                             )}
                           </p>
-                          <p className="text-slate-600">{client.address}</p>
-                          <p className="text-slate-600">
+                          <p className="text-slate-700">{client.address}</p>
+                          <p className="text-slate-700 font-medium">
                             {client.postalCode} {client.city}
                           </p>
-                          <p className="text-slate-600">Tél : {client.phone}</p>
-                          <p className="text-slate-600">Email : {client.email}</p>
+                          <p className="text-slate-600 text-[10.5px]">Tél : {client.phone}</p>
+                          <p className="text-slate-600 text-[10.5px]">Email : {client.email}</p>
+                          <p className="text-[9.5px] font-mono text-slate-500 pt-0.5">
+                            Réf Client : CLI-{client.id.replace('cli-', '').padStart(4, '0')}
+                          </p>
                         </div>
                       ) : (
-                        <p className="text-xs text-slate-400 italic">Client non renseigné</p>
-                      )}
-                    </div>
-
-                    {/* Vehicle Box */}
-                    <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                        VÉHICULE CONCERNÉ
-                      </span>
-                      {vehicle ? (
-                        <div className="text-xs sm:text-sm space-y-1.5">
-                          <div className="flex items-center gap-2">
-                            <span className="px-2.5 py-0.5 rounded font-mono font-bold text-xs bg-slate-900 text-white tracking-widest border border-slate-700">
-                              {vehicle.licensePlate}
-                            </span>
-                            <span className="font-semibold text-slate-900 text-sm">
-                              {vehicle.brand} {vehicle.model}
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 pt-1">
-                            <p>
-                              Année :{' '}
-                              <span className="font-semibold text-slate-800">
-                                {vehicle.year}
-                              </span>
-                            </p>
-                            <p>
-                              Énergie :{' '}
-                              <span className="font-semibold text-slate-800 uppercase">
-                                {vehicle.fuelType}
-                              </span>
-                            </p>
-                            <p className="col-span-2">
-                              VIN :{' '}
-                              <span className="font-mono text-[11px] text-slate-700">
-                                {vehicle.vin}
-                              </span>
-                            </p>
-                            <p className="col-span-2">
-                              Kilométrage relevé :{' '}
-                              <span className="font-bold text-slate-900">
-                                {(doc.mileageAtService || vehicle.mileage).toLocaleString('fr-FR')}{' '}
-                                km
-                              </span>
-                            </p>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-xs text-slate-400 italic">Aucun véhicule rattaché</p>
+                        <p className="text-xs text-slate-400 italic">Client non spécifié</p>
                       )}
                     </div>
                   </div>
 
-                  {/* Items Table */}
+                  {/* BANDEAU D'IDENTIFICATION DU DOCUMENT TYPE */}
+                  <div
+                    className="p-3 rounded-lg text-white flex flex-wrap items-center justify-between gap-3 shadow-xs"
+                    style={{ backgroundColor: theme.documentHeaderColor }}
+                  >
+                    <div>
+                      <span className="text-[10px] uppercase font-bold tracking-widest block opacity-85">
+                        DOCUMENT OFFICIEL DE FACTURATION TYPE
+                      </span>
+                      <h2 className="text-lg sm:text-xl font-black tracking-tight">
+                        {typeLabel} N° {doc.referenceNumber}
+                      </h2>
+                    </div>
+
+                    <div className="text-right text-[11px] space-y-0.5">
+                      <p>
+                        Date d'émission : <strong className="text-white">{formatDate(doc.date)}</strong>
+                      </p>
+                      <p>
+                        Date de prestation : <strong className="text-white">{formatDate(doc.date)}</strong>
+                      </p>
+                      {isQuote && doc.validityDate && (
+                        <p>
+                          Offre valable jusqu'au :{' '}
+                          <strong className="text-amber-300">{formatDate(doc.validityDate)}</strong>
+                        </p>
+                      )}
+                      {isInvoice && doc.dueDate && (
+                        <p>
+                          Date d'échéance :{' '}
+                          <strong className="text-amber-300">{formatDate(doc.dueDate)}</strong>
+                        </p>
+                      )}
+                      {doc.relatedQuoteId && (
+                        <p className="text-[10px] text-slate-300">Réf devis d'origine associé</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* CARTOUCHE TECHNIQUE VÉHICULE ATELIER (Norme Automobile) */}
+                  <div className="p-2.5 rounded-lg bg-slate-100/90 border border-slate-300 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className="px-2.5 py-1 rounded bg-slate-900 text-white font-mono font-bold text-xs tracking-wider border border-slate-700">
+                          {vehicle?.licensePlate || 'IMMATRICULATION'}
+                        </span>
+                        <span className="font-bold text-slate-900 text-sm">
+                          {vehicle ? `${vehicle.brand} ${vehicle.model}` : 'Véhicule Atelier'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 text-[11px] text-slate-700">
+                      <div>
+                        <span className="text-slate-500">Compteur : </span>
+                        <strong className="text-slate-950 font-mono">
+                          {(doc.mileageAtService || vehicle?.mileage || 0).toLocaleString('fr-FR')} km
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">VIN : </span>
+                        <strong className="font-mono text-slate-800">{vehicle?.vin || '—'}</strong>
+                      </div>
+                      {vehicle?.fuelType && (
+                        <div>
+                          <span className="text-slate-500">Énergie : </span>
+                          <strong className="uppercase">{vehicle.fuelType}</strong>
+                        </div>
+                      )}
+                      {vehicle?.year && (
+                        <div>
+                          <span className="text-slate-500">Année : </span>
+                          <strong>{vehicle.year}</strong>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* TABLEAU DES LIGNES DE FACTURATION TYPE */}
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-xs">
+                    <table className="w-full text-left border-collapse text-[11.5px] border border-slate-300">
                       <thead>
                         <tr
-                          className="text-white text-[11px] font-semibold uppercase tracking-wider"
+                          className="text-white text-[10px] font-bold uppercase tracking-wider"
                           style={{ backgroundColor: theme.documentHeaderColor }}
                         >
-                          <th className="py-2.5 px-3 rounded-l">Réf.</th>
-                          <th className="py-2.5 px-3">Désignation des Prestations & Pièces</th>
-                          <th className="py-2.5 px-3 text-right">Qté</th>
-                          <th className="py-2.5 px-3 text-right">P.U. HT</th>
-                          <th className="py-2.5 px-3 text-right">Rem.</th>
-                          <th className="py-2.5 px-3 text-right">TVA</th>
-                          <th className="py-2.5 px-3 text-right rounded-r">Total HT</th>
+                          <th className="py-2 px-2.5 border-r border-slate-700">Réf.</th>
+                          <th className="py-2 px-2.5 border-r border-slate-700">Désignation des Prestations & Fournitures</th>
+                          <th className="py-2 px-2 text-right border-r border-slate-700 w-12">Qté</th>
+                          <th className="py-2 px-2 text-right border-r border-slate-700 w-20">P.U. HT</th>
+                          <th className="py-2 px-1.5 text-right border-r border-slate-700 w-12">Rem.</th>
+                          <th className="py-2 px-2 text-right border-r border-slate-700 w-20">Total HT</th>
+                          <th className="py-2 px-1.5 text-right border-r border-slate-700 w-12">TVA</th>
+                          <th className="py-2 px-2.5 text-right w-24">Total TTC</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
                         {doc.items.map((it, idx) => {
-                          const lineHT =
-                            it.quantity *
-                            it.unitPriceHT *
-                            (1 - (it.discountPercent || 0) / 100);
+                          const discount = it.discountPercent || 0;
+                          const lineHT = it.quantity * it.unitPriceHT * (1 - discount / 100);
+                          const rate = it.tvaRate || 20;
+                          const lineTTC = lineHT * (1 + rate / 100);
+
                           return (
                             <tr
                               key={it.id || idx}
-                              className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/70'}
+                              className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/80'}
                             >
-                              <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500 whitespace-nowrap">
+                              <td className="py-2 px-2.5 font-mono text-[10px] text-slate-600 border-r border-slate-200 whitespace-nowrap">
                                 {it.reference || '—'}
                               </td>
-                              <td className="py-2.5 px-3 font-medium text-slate-800">
-                                {it.description}
-                                <span className="text-[10px] text-slate-400 ml-2">
+                              <td className="py-2 px-2.5 border-r border-slate-200 font-medium text-slate-800">
+                                <span>{it.description}</span>
+                                <span className="text-[9.5px] font-semibold text-slate-400 ml-1.5">
                                   {it.type === 'piece'
-                                    ? '(Pièce)'
+                                    ? '[Pièce]'
                                     : it.type === 'main_oeuvre'
-                                    ? '(M.O)'
+                                    ? '[M.O]'
                                     : it.type === 'forfait'
-                                    ? '(Forfait)'
+                                    ? '[Forfait]'
                                     : ''}
                                 </span>
                               </td>
-                              <td className="py-2.5 px-3 text-right tabular-nums text-slate-700">
-                                {it.quantity}
+                              <td className="py-2 px-2 text-right border-r border-slate-200 font-mono text-slate-800 tabular-nums">
+                                {it.quantity.toLocaleString('fr-FR', {
+                                  minimumFractionDigits: Number.isInteger(it.quantity) ? 0 : 2,
+                                })}
                               </td>
-                              <td className="py-2.5 px-3 text-right tabular-nums text-slate-700">
+                              <td className="py-2 px-2 text-right border-r border-slate-200 font-mono text-slate-700 tabular-nums">
                                 {it.unitPriceHT.toFixed(2)} €
                               </td>
-                              <td className="py-2.5 px-3 text-right tabular-nums text-slate-500">
-                                {it.discountPercent ? `${it.discountPercent}%` : '—'}
+                              <td className="py-2 px-1.5 text-right border-r border-slate-200 font-mono text-slate-500 tabular-nums">
+                                {discount > 0 ? `${discount}%` : '—'}
                               </td>
-                              <td className="py-2.5 px-3 text-right tabular-nums text-slate-500">
-                                {it.tvaRate}%
-                              </td>
-                              <td className="py-2.5 px-3 text-right tabular-nums font-semibold text-slate-900">
+                              <td className="py-2 px-2 text-right border-r border-slate-200 font-mono font-semibold text-slate-900 tabular-nums">
                                 {lineHT.toFixed(2)} €
+                              </td>
+                              <td className="py-2 px-1.5 text-right border-r border-slate-200 font-mono text-slate-600 tabular-nums text-[10.5px]">
+                                {rate.toFixed(1)}%
+                              </td>
+                              <td className="py-2 px-2.5 text-right font-mono font-bold text-slate-900 tabular-nums">
+                                {lineTTC.toFixed(2)} €
                               </td>
                             </tr>
                           );
@@ -802,163 +935,237 @@ export const DocumentViewerModal: React.FC = () => {
                     </table>
                   </div>
 
-                  {/* Totals & Breakdown */}
-                  <div className="flex flex-col sm:flex-row items-start justify-between gap-6 pt-3 border-t border-slate-200 avoid-break">
-                    {/* Payment details & notes */}
-                    <div className="w-full sm:w-1/2 space-y-3 text-xs">
-                      {doc.notes && (
-                        <div className="p-3 rounded-lg bg-amber-50/70 border border-amber-200 text-amber-950">
-                          <span className="font-semibold block mb-0.5">Remarques Atelier :</span>
-                          <p>{doc.notes}</p>
+                  {/* RÉCAPITULATIF FISCAL & SOUS-TOTAUX (Norme de facturation obligatoire) */}
+                  <div className="grid grid-cols-12 gap-4 items-start pt-1 avoid-break">
+                    {/* GAUCHE (Col 7) : Ventilation TVA + Sous-totaux Prestations + Règlement */}
+                    <div className="col-span-7 space-y-3">
+                      {/* Tableau de Ventilation de la TVA (Obligation CGI) */}
+                      <div className="border border-slate-300 rounded overflow-hidden">
+                        <div className="bg-slate-100 px-2 py-1 border-b border-slate-200 text-[9.5px] font-bold text-slate-700 uppercase tracking-wider">
+                          Tableau de Récapitulation Fiscale de la TVA (art. 242 nonies A du CGI)
                         </div>
-                      )}
+                        <table className="w-full text-left text-[10px] border-collapse">
+                          <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                            <tr>
+                              <th className="py-1 px-2">Taux TVA</th>
+                              <th className="py-1 px-2 text-right">Base Hors Taxe</th>
+                              <th className="py-1 px-2 text-right">Montant de TVA</th>
+                              <th className="py-1 px-2 text-right">Total TTC</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200 font-mono">
+                            {Object.entries(vatBreakdown).map(([rateStr, val]) => (
+                              <tr key={rateStr}>
+                                <td className="py-1 px-2 font-sans font-medium text-slate-800">
+                                  Taux normal ({parseFloat(rateStr).toFixed(1)}%)
+                                </td>
+                                <td className="py-1 px-2 text-right tabular-nums">
+                                  {val.baseHT.toFixed(2)} €
+                                </td>
+                                <td className="py-1 px-2 text-right tabular-nums font-semibold">
+                                  {val.amountTVA.toFixed(2)} €
+                                </td>
+                                <td className="py-1 px-2 text-right tabular-nums font-bold">
+                                  {(val.baseHT + val.amountTVA).toFixed(2)} €
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
 
-                      <div className="space-y-1 text-slate-600 text-[11px] leading-relaxed">
-                        <p className="font-semibold text-slate-800">Modalités de règlement :</p>
-                        <p>Moyens acceptés : Espèces, Carte Bancaire, Virement bancaire, Chèque.</p>
+                      {/* Sous-totaux par nature de travail */}
+                      <div className="p-2 rounded bg-slate-50 border border-slate-200 text-[10px] grid grid-cols-3 gap-2">
+                        <div>
+                          <span className="text-slate-500 block">Total Pièces HT :</span>
+                          <strong className="font-mono text-slate-800 text-[11px]">
+                            {partsSubtotalHT.toFixed(2)} €
+                          </strong>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 block">Total Main d'œuvre HT :</span>
+                          <strong className="font-mono text-slate-800 text-[11px]">
+                            {laborSubtotalHT.toFixed(2)} €
+                          </strong>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 block">Forfaits / Autre HT :</span>
+                          <strong className="font-mono text-slate-800 text-[11px]">
+                            {otherSubtotalHT.toFixed(2)} €
+                          </strong>
+                        </div>
+                      </div>
+
+                      {/* Coordonnées bancaires & Modalités */}
+                      <div className="p-2.5 rounded bg-slate-50/80 border border-slate-200 text-[10px] text-slate-600 space-y-1">
+                        <p className="font-bold text-slate-800 uppercase tracking-wide text-[9.5px]">
+                          Modalités de Règlement & Coordonnées Bancaires :
+                        </p>
+                        <p>
+                          Moyens acceptés : Carte Bancaire, Virement, Chèque, Espèces (max. 1 000 €).
+                        </p>
                         {garage.bankIban && (
-                          <p className="font-mono text-[11px] bg-slate-100 p-2 rounded border border-slate-200 text-slate-800">
-                            IBAN : {garage.bankIban}
-                            <br />
-                            BIC : {garage.bankBic}
+                          <p className="font-mono text-[10px] text-slate-900 bg-white p-1 rounded border border-slate-200">
+                            IBAN : <strong>{garage.bankIban}</strong> · BIC : <strong>{garage.bankBic}</strong>
+                          </p>
+                        )}
+                        {doc.notes && (
+                          <p className="text-[10px] text-amber-900 pt-0.5 italic">
+                            Remarque atelier : {doc.notes}
                           </p>
                         )}
                       </div>
                     </div>
 
-                    {/* Totals Summary Box */}
-                    <div className="w-full sm:w-72 bg-slate-50 rounded-lg p-4 border border-slate-200 space-y-2 text-xs">
-                      <div className="flex justify-between text-slate-600">
-                        <span>Total Pièces HT :</span>
-                        <span className="font-mono font-medium tabular-nums">
-                          {doc.totalPartsHT.toFixed(2)} €
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>Total Main d'œuvre HT :</span>
-                        <span className="font-mono font-medium tabular-nums">
-                          {doc.totalLaborHT.toFixed(2)} €
-                        </span>
-                      </div>
-                      <div className="flex justify-between font-semibold text-slate-900 pt-1 border-t border-slate-200">
-                        <span>TOTAL HT :</span>
-                        <span className="font-mono tabular-nums">{doc.totalHT.toFixed(2)} €</span>
-                      </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>TVA (20.0%) :</span>
-                        <span className="font-mono tabular-nums">{doc.totalTVA.toFixed(2)} €</span>
-                      </div>
-                      <div
-                        className="flex justify-between items-center text-white p-2.5 rounded font-bold text-sm tracking-tight shadow-xs"
-                        style={{ backgroundColor: theme.documentHeaderColor }}
-                      >
-                        <span>TOTAL TTC :</span>
-                        <span className="font-mono text-base tabular-nums">
-                          {doc.totalTTC.toFixed(2)} €
-                        </span>
-                      </div>
-
-                      {doc.amountPaid > 0 && (
-                        <div className="pt-2 border-t border-slate-200 space-y-1">
-                          <div className="flex justify-between text-emerald-700 font-semibold">
-                            <span>Acompte / Déjà réglé :</span>
-                            <span className="font-mono tabular-nums">
-                              -{doc.amountPaid.toFixed(2)} €
-                            </span>
-                          </div>
-                          <div className="flex justify-between font-bold text-slate-900 text-xs">
-                            <span>RESTE À PAYER :</span>
-                            <span className="font-mono tabular-nums">
-                              {Math.max(0, doc.totalTTC - doc.amountPaid).toFixed(2)} €
-                            </span>
-                          </div>
+                    {/* DROITE (Col 5) : Grand Total TTC, Acompte & Reste à Payer */}
+                    <div className="col-span-5 space-y-2">
+                      <div className="border border-slate-300 rounded-lg p-3 bg-slate-50/80 space-y-2 text-xs">
+                        <div className="flex justify-between text-slate-700">
+                          <span>TOTAL GÉNÉRAL HT :</span>
+                          <span className="font-mono font-bold tabular-nums">
+                            {doc.totalHT.toFixed(2)} €
+                          </span>
                         </div>
-                      )}
+                        <div className="flex justify-between text-slate-700">
+                          <span>TOTAL TVA (20.0%) :</span>
+                          <span className="font-mono tabular-nums">
+                            {doc.totalTVA.toFixed(2)} €
+                          </span>
+                        </div>
+
+                        {/* Grand Total TTC */}
+                        <div
+                          className="flex justify-between items-center text-white p-2.5 rounded font-black text-sm tracking-tight shadow-xs"
+                          style={{ backgroundColor: theme.documentHeaderColor }}
+                        >
+                          <span>TOTAL TTC EN EUROS :</span>
+                          <span className="font-mono text-base tabular-nums">
+                            {doc.totalTTC.toFixed(2)} €
+                          </span>
+                        </div>
+
+                        {/* Acomptes & Solde Reste à Payer */}
+                        <div className="pt-2 border-t border-slate-200 space-y-1 text-xs">
+                          {doc.amountPaid > 0 ? (
+                            <>
+                              <div className="flex justify-between text-emerald-700 font-semibold text-[11px]">
+                                <span>Acompte déjà versé :</span>
+                                <span className="font-mono tabular-nums">
+                                  -{doc.amountPaid.toFixed(2)} €
+                                </span>
+                              </div>
+                              <div className="flex justify-between font-black text-slate-900 text-sm pt-1 border-t border-slate-300">
+                                <span>NET À PAYER :</span>
+                                <span className="font-mono text-base tabular-nums text-slate-950">
+                                  {Math.max(0, doc.totalTTC - doc.amountPaid).toFixed(2)} €
+                                </span>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="flex justify-between font-black text-slate-900 text-sm">
+                              <span>NET À PAYER :</span>
+                              <span className="font-mono text-base tabular-nums">
+                                {doc.totalTTC.toFixed(2)} €
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Tampon facture acquittée si payée */}
+                        {isInvoice && doc.status === 'paye' && (
+                          <div className="mt-2 p-1.5 text-center border-2 border-dashed border-emerald-600 rounded bg-emerald-50 text-emerald-800 font-bold text-xs uppercase tracking-wider">
+                            ✓ FACTURE ACQUITTÉE
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Client & Garage Signature Zone */}
-                  <div className="grid grid-cols-2 gap-6 pt-4 border-t border-slate-200 text-xs avoid-break">
-                    <div className="p-3 border border-slate-200 rounded-lg bg-slate-50/50 flex flex-col justify-between h-24">
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                  {/* CADRES DE SIGNATURE ET BON POUR ACCORD TYPE */}
+                  <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-300 text-[10px] avoid-break">
+                    {/* Cadre Client */}
+                    <div className="p-2.5 border border-slate-300 rounded bg-slate-50/50 flex flex-col justify-between h-20">
+                      <p className="font-bold text-slate-800 uppercase text-[9px]">
                         {isQuote
-                          ? 'Pour le Client — Mention manuscrite « Bon pour accord »'
-                          : 'Pour le Client — Reçu conforme & Signature'}
+                          ? 'Mention manuscrite « Bon pour accord et exécution des travaux » :'
+                          : isOrder
+                          ? 'Signature du Client valant bon de commande ferme :'
+                          : 'Pour le Client — Réception conforme & Visa :'}
                       </p>
-                      <p className="text-[10px] text-slate-400">Date : ____________</p>
+                      <div className="flex justify-between text-slate-400 text-[9px] pt-2 border-t border-slate-200">
+                        <span>Date : ___________________</span>
+                        <span>Signature :</span>
+                      </div>
                     </div>
-                    <div className="p-3 border border-slate-200 rounded-lg bg-slate-50/50 flex flex-col justify-between h-24 text-right">
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                        Pour l'Établissement — Cachet & Signature
+
+                    {/* Cadre Garage */}
+                    <div className="p-2.5 border border-slate-300 rounded bg-slate-50/50 flex flex-col justify-between h-20 text-right">
+                      <p className="font-bold text-slate-800 uppercase text-[9px]">
+                        Pour l'Établissement — Cachet Commercial & Signature :
                       </p>
-                      <p className="text-[10px] text-slate-400">
-                        {garage.name} · Responsable d'atelier
-                      </p>
+                      <div className="flex justify-between text-slate-400 text-[9px] pt-2 border-t border-slate-200">
+                        <span>{garage.city}, le {new Date().toLocaleDateString('fr-FR')}</span>
+                        <span>{garage.name}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* -------------------- 2. FICHE D'ATELIER / ORDRE DE RÉPARATION (OR) -------------------- */}
+              {/* -------------------- 2. FICHE TECHNIQUE D'ATELIER (OR) -------------------- */}
               {!isSupplierOrder && doc && layoutMode === 'workshop_card' && (
-                <div className="space-y-6">
-                  {/* Header: Garage + Workshop Card Title */}
-                  <div className="flex items-start justify-between pb-4 border-b-2 border-slate-900">
+                <div className="space-y-4">
+                  <div className="flex items-start justify-between pb-3 border-b-2 border-slate-900">
                     <div className="flex items-center gap-3">
                       {garage.logoUrl && (
                         <img
                           src={garage.logoUrl}
                           alt={garage.name}
                           className="object-contain"
-                          style={{
-                            height: '50px',
-                            maxWidth: '140px',
-                          }}
+                          style={{ height: '48px', maxWidth: '130px' }}
                         />
                       )}
                       <div>
-                        <h1 className="text-lg font-black text-slate-900">{garage.name}</h1>
-                        <p className="text-xs text-slate-500">Service Technique & Atelier Mécanique</p>
+                        <h1 className="text-base font-black text-slate-900 uppercase">{garage.name}</h1>
+                        <p className="text-[11px] text-slate-600">Atelier de Réparations Mécaniques & Électronique</p>
                       </div>
                     </div>
 
                     <div className="text-right">
-                      <div className="px-3 py-1 bg-slate-900 text-white rounded font-black text-sm tracking-wide uppercase inline-block">
-                        ORDRE DE RÉPARATION (OR)
+                      <div className="px-3 py-1 bg-slate-900 text-white rounded font-black text-xs uppercase tracking-wider inline-block">
+                        ORDRE DE RÉPARATION & FICHE ATELIER
                       </div>
                       <p className="text-xs font-mono font-bold text-slate-800 mt-1">
                         OR N° {doc.referenceNumber}
                       </p>
-                      <p className="text-[11px] text-slate-500">Date : {formatDate(doc.date)}</p>
+                      <p className="text-[10px] text-slate-500">Date : {formatDate(doc.date)}</p>
                     </div>
                   </div>
 
-                  {/* Vehicle & Customer Identity */}
-                  <div className="grid grid-cols-2 gap-4 p-3 bg-slate-100 rounded-lg border border-slate-300 text-xs">
+                  <div className="grid grid-cols-2 gap-4 p-3 bg-slate-100 rounded border border-slate-300 text-xs">
                     <div>
-                      <span className="text-[10px] font-bold text-slate-500 uppercase block">
-                        Véhicule Pris en Charge
+                      <span className="text-[9.5px] font-bold text-slate-500 uppercase block">
+                        Véhicule Confié à l'Atelier
                       </span>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="px-2 py-0.5 bg-slate-900 text-white rounded font-mono font-bold text-sm">
+                        <span className="px-2 py-0.5 bg-slate-900 text-white rounded font-mono font-bold text-xs">
                           {vehicle?.licensePlate || 'N/A'}
                         </span>
                         <span className="font-bold text-slate-900">
                           {vehicle?.brand} {vehicle?.model}
                         </span>
                       </div>
-                      <p className="text-slate-600 mt-1">
-                        Compteur relevé :{' '}
-                        <strong className="text-slate-900">
-                          {(doc.mileageAtService || vehicle?.mileage || 0).toLocaleString('fr-FR')}{' '}
-                          km
+                      <p className="text-slate-700 text-[11px] mt-1">
+                        Kilométrage relevé :{' '}
+                        <strong>
+                          {(doc.mileageAtService || vehicle?.mileage || 0).toLocaleString('fr-FR')} km
                         </strong>
                       </p>
-                      <p className="text-slate-500 text-[11px]">VIN : {vehicle?.vin || '—'}</p>
+                      <p className="text-slate-500 text-[10px] font-mono">VIN : {vehicle?.vin || '—'}</p>
                     </div>
 
                     <div>
-                      <span className="text-[10px] font-bold text-slate-500 uppercase block">
+                      <span className="text-[9.5px] font-bold text-slate-500 uppercase block">
                         Client Propriétaire
                       </span>
                       <p className="font-bold text-slate-900 mt-1">
@@ -968,110 +1175,94 @@ export const DocumentViewerModal: React.FC = () => {
                             : `${client.firstName} ${client.lastName}`
                           : 'Client inconnu'}
                       </p>
-                      <p className="text-slate-600">Tél : {client?.phone || '—'}</p>
-                      <p className="text-slate-500 text-[11px]">
-                        Adresse : {client?.address}, {client?.city}
-                      </p>
+                      <p className="text-slate-700 text-[11px]">Tél : {client?.phone || '—'}</p>
+                      <p className="text-slate-500 text-[10px]">{client?.address}, {client?.city}</p>
                     </div>
                   </div>
 
-                  {/* Checklist Points de Sécurité Obligatoires */}
-                  <div className="p-4 border border-slate-300 rounded-lg bg-amber-50/40">
-                    <div className="flex items-center gap-2 mb-3">
+                  {/* Checklist des Contrôles de Sécurité */}
+                  <div className="p-3 border border-amber-300 rounded bg-amber-50/50">
+                    <div className="flex items-center gap-2 mb-2">
                       <ShieldCheck className="w-4 h-4 text-amber-700" />
                       <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wide">
-                        Checklist Points de Contrôle Sécurité & Réception Atelier
+                        Points de Contrôle Sécurité & Réception Atelier
                       </h3>
                     </div>
-
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                      <div className="flex items-center gap-2">
+                    <div className="grid grid-cols-3 gap-2 text-[11px]">
+                      <div className="flex items-center gap-1.5">
                         <input type="checkbox" defaultChecked className="rounded text-sky-600" />
-                        <span>Contrôle freinage AV/AR</span>
+                        <span>Plaquettes & Disques freins</span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <input type="checkbox" defaultChecked className="rounded text-sky-600" />
-                        <span>Pression & Usure pneus</span>
+                        <span>Pression & État pneus</span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <input type="checkbox" defaultChecked className="rounded text-sky-600" />
                         <span>Niveau huile moteur</span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <input type="checkbox" defaultChecked className="rounded text-sky-600" />
                         <span>Liquide refroidissement</span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <input type="checkbox" defaultChecked className="rounded text-sky-600" />
-                        <span>Éclairage & Signalisation</span>
+                        <span>Éclairage & Phares</span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <input type="checkbox" defaultChecked className="rounded text-sky-600" />
                         <span>Test batterie & charge</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Table of operations to perform */}
+                  {/* Tableau des Prestations à Effectuer */}
                   <div>
-                    <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                    <h3 className="font-bold text-slate-900 text-xs uppercase mb-1.5 flex items-center gap-1.5">
                       <CheckSquare className="w-3.5 h-3.5 text-sky-600" />
-                      <span>Travaux & Opérations Demandées</span>
+                      <span>Opérations Demandées & Pièces à Poser</span>
                     </h3>
-                    <table className="w-full text-left border border-slate-200 text-xs">
+                    <table className="w-full text-left border border-slate-300 text-xs">
                       <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px]">
                         <tr>
-                          <th className="py-2 px-3 w-12 text-center">Fait</th>
-                          <th className="py-2 px-3">Réf</th>
-                          <th className="py-2 px-3">Opération / Pièce à poser</th>
-                          <th className="py-2 px-3 text-right">Qté</th>
-                          <th className="py-2 px-3 w-32">Visa Mécano</th>
+                          <th className="py-1.5 px-2.5 w-12 text-center">Fait</th>
+                          <th className="py-1.5 px-2.5">Réf.</th>
+                          <th className="py-1.5 px-2.5">Opération / Pièce</th>
+                          <th className="py-1.5 px-2 text-right">Qté</th>
+                          <th className="py-1.5 px-2.5 w-32">Visa Mécano</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
                         {doc.items.map((it, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50">
-                            <td className="py-2.5 px-3 text-center">
-                              <span className="inline-block w-4 h-4 border border-slate-400 rounded-sm" />
+                          <tr key={idx}>
+                            <td className="py-2 px-2.5 text-center">
+                              <span className="inline-block w-3.5 h-3.5 border border-slate-400 rounded-xs" />
                             </td>
-                            <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500">
+                            <td className="py-2 px-2.5 font-mono text-[10.5px] text-slate-500">
                               {it.reference || '—'}
                             </td>
-                            <td className="py-2.5 px-3 font-semibold text-slate-800">
+                            <td className="py-2 px-2.5 font-semibold text-slate-800">
                               {it.description}
                             </td>
-                            <td className="py-2.5 px-3 text-right font-mono">{it.quantity}</td>
-                            <td className="py-2.5 px-3 border-l border-slate-200" />
+                            <td className="py-2 px-2 text-right font-mono">{it.quantity}</td>
+                            <td className="py-2 px-2.5 border-l border-slate-200" />
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
 
-                  {/* Workshop observations and customer consent */}
-                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200 text-xs">
-                    <div className="p-3 border border-slate-300 rounded-lg space-y-1">
-                      <span className="font-bold text-slate-800 block text-[11px]">
-                        Remarques & Diagnostic Mécanicien :
-                      </span>
-                      <p className="text-slate-600 text-xs italic">
-                        {doc.notes ||
-                          'Véhicule réceptionné propre. Déposer les pièces remplacées dans le bac consigne.'}
+                  <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-300 text-xs">
+                    <div className="p-2.5 border border-slate-300 rounded text-[10.5px]">
+                      <span className="font-bold text-slate-800 block mb-0.5">Remarques Atelier :</span>
+                      <p className="text-slate-600 italic">
+                        {doc.notes || 'Consigner les pièces usagées au bac recyclage.'}
                       </p>
                     </div>
-
-                    <div className="p-3 border border-slate-300 rounded-lg flex flex-col justify-between h-28">
-                      <div>
-                        <span className="font-bold text-slate-800 block text-[11px]">
-                          Autorisation de Réparation & Décharge :
-                        </span>
-                        <p className="text-[10px] text-slate-500 leading-tight">
-                          J'autorise le garage à effectuer les travaux décrits et à procéder aux
-                          essais sur route nécessaires.
-                        </p>
-                      </div>
-                      <div className="flex justify-between text-[10px] text-slate-400 pt-2 border-t border-slate-200">
-                        <span>Date : ____________</span>
+                    <div className="p-2.5 border border-slate-300 rounded flex flex-col justify-between h-20 text-[10px]">
+                      <span className="font-bold text-slate-800">Autorisation de Réparation & Essais sur Route :</span>
+                      <div className="flex justify-between text-slate-400 pt-1 border-t border-slate-200">
+                        <span>Date : _________</span>
                         <span>Signature client :</span>
                       </div>
                     </div>
@@ -1081,319 +1272,247 @@ export const DocumentViewerModal: React.FC = () => {
 
               {/* -------------------- 3. BON DE LIVRAISON / RESTITUTION VÉHICULE -------------------- */}
               {!isSupplierOrder && doc && layoutMode === 'handover' && (
-                <div className="space-y-6">
-                  <div className="flex items-start justify-between pb-4 border-b-2 border-emerald-600">
+                <div className="space-y-4">
+                  <div className="flex items-start justify-between pb-3 border-b-2 border-emerald-600">
                     <div>
-                      <h1 className="text-xl font-black text-slate-900">{garage.name}</h1>
-                      <p className="text-xs text-slate-500">
-                        {garage.address}, {garage.postalCode} {garage.city}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        Tél : {garage.phone} · SIRET : {garage.siret}
-                      </p>
+                      <h1 className="text-lg font-black text-slate-900 uppercase">{garage.name}</h1>
+                      <p className="text-[11px] text-slate-600">{garage.address}, {garage.postalCode} {garage.city}</p>
+                      <p className="text-[10px] text-slate-500">Tél : {garage.phone} · SIRET : {garage.siret}</p>
                     </div>
                     <div className="text-right">
-                      <div className="px-3 py-1 bg-emerald-700 text-white rounded font-black text-sm tracking-wide uppercase inline-block">
+                      <div className="px-3 py-1 bg-emerald-700 text-white rounded font-black text-xs uppercase tracking-wide inline-block">
                         BON DE RESTITUTION VÉHICULE
                       </div>
                       <p className="text-xs font-mono font-bold text-slate-800 mt-1">
                         Réf {doc.referenceNumber}
                       </p>
-                      <p className="text-[11px] text-slate-500">Date : {formatDate(doc.date)}</p>
+                      <p className="text-[10px] text-slate-500">Date : {formatDate(doc.date)}</p>
                     </div>
                   </div>
 
-                  <div className="p-4 bg-emerald-50/60 border border-emerald-200 rounded-lg text-xs space-y-2">
-                    <p className="text-emerald-950 font-bold text-sm">
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded text-xs space-y-1">
+                    <p className="text-emerald-950 font-bold">
                       Procès-Verbal de Réception Conforme des Travaux
                     </p>
-                    <p className="text-slate-700 leading-relaxed">
-                      Le garage <strong>{garage.name}</strong> certifie la bonne exécution des
-                      travaux d’entretien et réparations mécaniques convenus sur le véhicule{' '}
-                      <strong>
-                        {vehicle?.brand} {vehicle?.model} (immatriculé {vehicle?.licensePlate})
-                      </strong>
-                      , pour le compte de{' '}
-                      <strong>
-                        {client
-                          ? client.type === 'professionnel'
-                            ? client.companyName
-                            : `${client.firstName} ${client.lastName}`
-                          : 'Client'}
-                      </strong>
-                      .
+                    <p className="text-slate-700 leading-relaxed text-[11px]">
+                      Le garage <strong>{garage.name}</strong> certifie la bonne exécution des travaux d’entretien et réparations mécaniques convenus sur le véhicule{' '}
+                      <strong>{vehicle?.brand} {vehicle?.model} ({vehicle?.licensePlate})</strong>, pour le compte de{' '}
+                      <strong>{client ? (client.type === 'professionnel' ? client.companyName : `${client.firstName} ${client.lastName}`) : 'Client'}</strong>.
                     </p>
                   </div>
 
-                  {/* Summary of services performed */}
                   <div>
-                    <h3 className="font-bold text-slate-800 text-xs uppercase mb-2">
+                    <h3 className="font-bold text-slate-800 text-xs uppercase mb-1.5">
                       Synthèse des Prestations & Pièces Remplacées
                     </h3>
-                    <ul className="divide-y divide-slate-200 border border-slate-200 rounded-lg text-xs">
+                    <ul className="divide-y divide-slate-200 border border-slate-300 rounded text-xs">
                       {doc.items.map((it, idx) => (
-                        <li
-                          key={idx}
-                          className="p-2.5 flex items-center justify-between hover:bg-slate-50"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                            <span className="font-medium text-slate-800">{it.description}</span>
-                          </div>
-                          <span className="text-slate-500 text-[11px]">
-                            Quantité : <strong>{it.quantity}</strong>
-                          </span>
+                        <li key={idx} className="p-2 flex items-center justify-between hover:bg-slate-50">
+                          <span className="font-medium text-slate-800">{it.description}</span>
+                          <span className="text-slate-500 font-mono text-[11px]">Qté : {it.quantity}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
 
-                  {/* Old parts handover */}
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs flex items-center justify-between">
-                    <span>
-                      Restitution des anciennes pièces usagées au client :{' '}
-                      <strong>Effectuée / Déchetterie agréée</strong>
-                    </span>
-                    <span className="font-mono text-slate-600">
-                      Kilométrage sortie :{' '}
-                      <strong>
-                        {(doc.mileageAtService || vehicle?.mileage || 0).toLocaleString('fr-FR')} km
-                      </strong>
+                  <div className="p-2.5 bg-slate-50 rounded border border-slate-200 text-xs flex justify-between">
+                    <span>Restitution des anciennes pièces usagées : <strong>Déposées / Recyclage agréé</strong></span>
+                    <span className="font-mono text-slate-700">
+                      Kilométrage sortie : <strong>{(doc.mileageAtService || vehicle?.mileage || 0).toLocaleString('fr-FR')} km</strong>
                     </span>
                   </div>
 
-                  {/* Double signature */}
-                  <div className="grid grid-cols-2 gap-6 pt-6 border-t border-slate-200 text-xs">
-                    <div className="p-4 border border-slate-200 rounded-lg flex flex-col justify-between h-32">
-                      <p className="font-bold text-slate-800">
-                        Signature du Client « Reçu véhicule & clés en bon état » :
-                      </p>
-                      <p className="text-[10px] text-slate-400">Date et Signature :</p>
+                  <div className="grid grid-cols-2 gap-4 pt-3 border-t border-slate-300 text-xs">
+                    <div className="p-3 border border-slate-300 rounded flex flex-col justify-between h-24 text-[10px]">
+                      <p className="font-bold text-slate-800">Signature du Client « Reçu véhicule & clés en bon état » :</p>
+                      <p className="text-slate-400">Date et Signature :</p>
                     </div>
-                    <div className="p-4 border border-slate-200 rounded-lg flex flex-col justify-between h-32 text-right">
-                      <p className="font-bold text-slate-800">
-                        Cachet de l'Atelier & Visa Restitution :
-                      </p>
-                      <p className="text-[10px] text-slate-400">{garage.name}</p>
+                    <div className="p-3 border border-slate-300 rounded flex flex-col justify-between h-24 text-right text-[10px]">
+                      <p className="font-bold text-slate-800">Cachet de l'Atelier & Visa Restitution :</p>
+                      <p className="text-slate-400">{garage.name}</p>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* -------------------- 4. SUPPLIER PURCHASE ORDER A4 -------------------- */}
+              {/* -------------------- 4. COMMANDE FOURNISSEUR TYPE A4 -------------------- */}
               {isSupplierOrder && supOrder && (
-                <div className="space-y-6">
-                  {/* Header: Garage Logo & Supplier Order Title */}
-                  <div className="flex flex-col sm:flex-row items-start justify-between gap-6 pb-6 border-b-2 border-sky-600">
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row items-start justify-between gap-6 pb-4 border-b-2 border-sky-600">
                     <div className="flex items-start gap-4">
                       {garage.logoUrl && (
                         <img
                           src={garage.logoUrl}
                           alt={garage.name}
                           className="object-contain"
-                          style={{
-                            width: `${garage.logoSize || 140}px`,
-                            maxHeight: `${Math.round((garage.logoSize || 140) * 1.15)}px`,
-                            height: 'auto',
-                          }}
+                          style={{ width: `${garage.logoSize || 130}px`, height: 'auto' }}
                         />
                       )}
                       <div>
-                        <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                          {garage.name}
-                        </h1>
-                        <p className="text-xs font-medium text-slate-600">
-                          {garage.address}, {garage.postalCode} {garage.city}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          Tél : {garage.phone} · Email : {garage.email}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          SIRET : {garage.siret} · TVA : {garage.tvaNumber}
-                        </p>
+                        <h1 className="text-lg font-black text-slate-900 uppercase">{garage.name}</h1>
+                        <p className="text-xs text-slate-600">{garage.address}, {garage.postalCode} {garage.city}</p>
+                        <p className="text-xs text-slate-500">Tél : {garage.phone} · SIRET : {garage.siret}</p>
+                        <p className="text-[10px] text-slate-500">N° TVA : {garage.tvaNumber}</p>
                       </div>
                     </div>
 
                     <div className="sm:text-right shrink-0">
-                      <div className="px-4 py-2 rounded bg-sky-700 text-white inline-block text-left sm:text-right mb-2 shadow-xs">
-                        <span className="text-[10px] tracking-widest font-semibold block uppercase opacity-85">
+                      <div className="px-3 py-1.5 rounded bg-sky-700 text-white inline-block text-left sm:text-right mb-1">
+                        <span className="text-[9px] tracking-widest font-semibold block uppercase opacity-85">
                           APPROVISIONNEMENT PIÈCES
                         </span>
-                        <span className="text-xl sm:text-2xl font-black tracking-tight">
-                          BON DE COMMANDE
+                        <span className="text-lg font-black tracking-tight">
+                          BON DE COMMANDE FOURNISSEUR
                         </span>
                       </div>
-                      <p className="text-base font-bold font-mono text-slate-900">
+                      <p className="text-sm font-bold font-mono text-slate-900">
                         N° {supOrder.orderNumber}
                       </p>
-                      <p className="text-xs text-slate-600 mt-1">
-                        Date de commande :{' '}
-                        <strong className="text-slate-900">{formatDate(supOrder.orderDate)}</strong>
+                      <p className="text-[11px] text-slate-600">
+                        Date de commande : <strong>{formatDate(supOrder.orderDate)}</strong>
                       </p>
                       {supOrder.deliveryDate && (
-                        <p className="text-xs text-slate-600">
-                          Livraison souhaitée :{' '}
-                          <strong className="text-slate-900">
-                            {formatDate(supOrder.deliveryDate)}
-                          </strong>
+                        <p className="text-[11px] text-slate-600">
+                          Livraison souhaitée : <strong>{formatDate(supOrder.deliveryDate)}</strong>
                         </p>
                       )}
                     </div>
                   </div>
 
-                  {/* Supplier & Delivery Address Box */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-1">
-                    <div className="p-4 rounded-lg bg-sky-50/60 border border-sky-200">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-sky-800 block mb-1">
-                        FOURNISSEUR DESTINATAIRE
+                  <div className="grid grid-cols-2 gap-4 text-xs">
+                    <div className="p-3 rounded bg-sky-50 border border-sky-200">
+                      <span className="text-[9.5px] font-bold uppercase text-sky-800 block mb-1">
+                        Fournisseur Destinataire :
                       </span>
                       {supplier ? (
-                        <div className="text-xs sm:text-sm space-y-1">
-                          <p className="font-bold text-slate-900 text-base">{supplier.name}</p>
+                        <div className="space-y-0.5">
+                          <p className="font-bold text-slate-900 text-sm">{supplier.name}</p>
                           <p className="text-slate-600">{supplier.address}</p>
-                          <p className="text-slate-600">Tél : {supplier.phone}</p>
-                          <p className="text-slate-600">Email : {supplier.email}</p>
-                          <p className="text-slate-500 text-[11px] pt-1">
-                            Conditions de règlement : {supplier.paymentTerms}
-                          </p>
+                          <p className="text-slate-600">Tél : {supplier.phone} · Email : {supplier.email}</p>
+                          <p className="text-[10px] text-slate-500 pt-0.5">Conditions : {supplier.paymentTerms}</p>
                         </div>
                       ) : (
-                        <p className="text-xs text-slate-400 italic">Fournisseur non spécifié</p>
+                        <p className="text-slate-400 italic">Fournisseur inconnu</p>
                       )}
                     </div>
 
-                    <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                        ADRESSE DE LIVRAISON ATELIER
+                    <div className="p-3 rounded bg-slate-50 border border-slate-200">
+                      <span className="text-[9.5px] font-bold uppercase text-slate-500 block mb-1">
+                        Adresse de Livraison Atelier :
                       </span>
-                      <div className="text-xs sm:text-sm space-y-1">
-                        <p className="font-bold text-slate-900 text-base">{garage.name}</p>
-                        <p className="text-slate-600">{garage.address}</p>
-                        <p className="text-slate-600">
-                          {garage.postalCode} {garage.city}
-                        </p>
-                        <p className="text-slate-600">
-                          Réception atelier : Tél {garage.phone}
-                        </p>
-                        <p className="text-slate-500 text-[11px] pt-1">
-                          Horaires livraison : Lundi au Vendredi 08h00 - 18h30
-                        </p>
-                      </div>
+                      <p className="font-bold text-slate-900">{garage.name}</p>
+                      <p className="text-slate-600">{garage.address}, {garage.postalCode} {garage.city}</p>
+                      <p className="text-slate-600">Réception atelier : Tél {garage.phone}</p>
+                      <p className="text-[10px] text-slate-500">Horaires : 08h00 - 18h30</p>
                     </div>
                   </div>
 
-                  {/* Items Ordered Table */}
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="bg-sky-700 text-white text-[11px] font-semibold uppercase tracking-wider">
-                          <th className="py-2.5 px-3 rounded-l">Réf Fournisseur</th>
-                          <th className="py-2.5 px-3">Désignation Pièce / Consommable</th>
-                          <th className="py-2.5 px-3 text-right">Qté</th>
-                          <th className="py-2.5 px-3 text-right">P.U. Achat HT</th>
-                          <th className="py-2.5 px-3 text-right">TVA</th>
-                          <th className="py-2.5 px-3 text-right rounded-r">Total HT</th>
+                  <table className="w-full text-left border-collapse text-xs border border-slate-300">
+                    <thead>
+                      <tr className="bg-sky-700 text-white text-[10px] font-bold uppercase tracking-wider">
+                        <th className="py-2 px-2.5">Réf Fournisseur</th>
+                        <th className="py-2 px-2.5">Désignation Pièce / Consommable</th>
+                        <th className="py-2 px-2 text-right">Qté</th>
+                        <th className="py-2 px-2 text-right">P.U. Achat HT</th>
+                        <th className="py-2 px-2 text-right">TVA</th>
+                        <th className="py-2 px-2.5 text-right">Total HT</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {supOrder.items.map((it, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50">
+                          <td className="py-2 px-2.5 font-mono text-[10.5px] font-bold text-slate-700">
+                            {it.reference}
+                          </td>
+                          <td className="py-2 px-2.5 font-medium text-slate-800">{it.description}</td>
+                          <td className="py-2 px-2 text-right font-bold text-slate-900">{it.quantity}</td>
+                          <td className="py-2 px-2 text-right font-mono text-slate-700">{it.unitCostHT.toFixed(2)} €</td>
+                          <td className="py-2 px-2 text-right font-mono text-slate-500">{it.tvaRate}%</td>
+                          <td className="py-2 px-2.5 text-right font-mono font-bold text-slate-900">
+                            {(it.quantity * it.unitCostHT).toFixed(2)} €
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200">
-                        {supOrder.items.map((it, idx) => {
-                          const lineHT = it.quantity * it.unitCostHT;
-                          return (
-                            <tr key={it.id || idx} className="hover:bg-slate-50/70">
-                              <td className="py-2.5 px-3 font-mono text-[11px] font-bold text-slate-700">
-                                {it.reference}
-                              </td>
-                              <td className="py-2.5 px-3 font-medium text-slate-800">
-                                {it.description}
-                              </td>
-                              <td className="py-2.5 px-3 text-right tabular-nums text-slate-800 font-bold">
-                                {it.quantity}
-                              </td>
-                              <td className="py-2.5 px-3 text-right tabular-nums text-slate-700">
-                                {it.unitCostHT.toFixed(2)} €
-                              </td>
-                              <td className="py-2.5 px-3 text-right tabular-nums text-slate-500">
-                                {it.tvaRate}%
-                              </td>
-                              <td className="py-2.5 px-3 text-right tabular-nums font-semibold text-slate-900">
-                                {lineHT.toFixed(2)} €
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                      ))}
+                    </tbody>
+                  </table>
 
-                  {/* Totals Summary */}
-                  <div className="flex flex-col sm:flex-row items-start justify-between gap-6 pt-3 border-t border-slate-200">
-                    <div className="w-full sm:w-1/2 space-y-2 text-xs">
-                      {supOrder.notes && (
-                        <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-lg text-amber-950">
-                          <span className="font-semibold block mb-0.5">Instructions :</span>
-                          <p>{supOrder.notes}</p>
-                        </div>
-                      )}
-                      <p className="text-[11px] text-slate-500 italic">
-                        Commande ferme soumise à nos conditions générales d'achat atelier.
-                      </p>
+                  <div className="flex justify-between items-start pt-2 border-t border-slate-300 text-xs">
+                    <div className="w-1/2 text-[10.5px] text-slate-500 italic">
+                      {supOrder.notes || 'Commande d’approvisionnement soumise à nos conditions générales d’achat.'}
                     </div>
-
-                    <div className="w-full sm:w-72 bg-slate-50 rounded-lg p-4 border border-slate-200 space-y-2 text-xs">
+                    <div className="w-64 p-3 bg-slate-50 rounded border border-slate-200 space-y-1.5 text-xs">
                       <div className="flex justify-between text-slate-700">
                         <span>Total Achat HT :</span>
-                        <span className="font-mono font-bold tabular-nums">
-                          {supOrder.totalHT.toFixed(2)} €
-                        </span>
+                        <span className="font-mono font-bold">{supOrder.totalHT.toFixed(2)} €</span>
                       </div>
                       <div className="flex justify-between text-slate-600">
-                        <span>TVA Récupérable (20%) :</span>
-                        <span className="font-mono tabular-nums">
-                          {supOrder.totalTVA.toFixed(2)} €
-                        </span>
+                        <span>TVA Déductible (20%) :</span>
+                        <span className="font-mono">{supOrder.totalTVA.toFixed(2)} €</span>
                       </div>
-                      <div className="flex justify-between items-center text-white p-2.5 rounded font-bold text-sm bg-sky-700 shadow-xs">
+                      <div className="flex justify-between items-center bg-sky-700 text-white p-2 rounded font-black text-sm">
                         <span>TOTAL TTC :</span>
-                        <span className="font-mono text-base tabular-nums">
-                          {supOrder.totalTTC.toFixed(2)} €
-                        </span>
+                        <span className="font-mono">{supOrder.totalTTC.toFixed(2)} €</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Signature */}
-                  <div className="pt-6 border-t border-slate-200 flex justify-between items-end text-xs">
+                  <div className="pt-4 border-t border-slate-200 flex justify-between items-end text-[10.5px]">
                     <div>
-                      <p className="text-slate-500 text-[11px]">
-                        Bon émis par le Responsable des Pièces & Approvisionnement
-                      </p>
-                      <p className="font-semibold text-slate-800">{garage.name}</p>
+                      <p className="text-slate-500">Service Approvisionnement & Pièces :</p>
+                      <p className="font-bold text-slate-800">{garage.name}</p>
                     </div>
                     <div className="text-right">
-                      <p className="border-b border-slate-300 pb-8 w-48 text-[11px] text-slate-400">
-                        Signature autorisée :
-                      </p>
+                      <p className="border-b border-slate-300 pb-6 w-44 text-slate-400">Signature autorisée :</p>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Mandatory Legal Footer for All Documents */}
-              <div className="mt-8 pt-4 border-t border-slate-200 text-[9.5px] text-slate-500 text-center leading-relaxed avoid-break">
+              {/* PIED DE PAGE LÉGAL OBLIGATOIRE NORMALISÉ (Norme DGFiP & Code de Commerce) */}
+              <div className="mt-4 pt-2.5 border-t border-slate-300 text-[8.5px] text-slate-500 text-center leading-relaxed avoid-break space-y-0.5">
                 <p>
-                  {garage.legalNotes ||
-                    'En cas de retard de paiement, une indemnité forfaitaire pour frais de recouvrement de 40 € sera due (art. D. 441-5 du Code de commerce).'}
+                  <strong>Mentions légales & pénalités de retard :</strong> En application de l'article L. 441-10 du Code de commerce, tout retard de paiement donne lieu de plein droit et sans mise en demeure préalable à des pénalités d'un taux égal au taux de refinancement de la BCE majoré de 10 points. Une indemnité forfaitaire pour frais de recouvrement de 40 € est due de plein droit pour les professionnels (art. D. 441-5 C. com.). Pas d'escompte pour paiement anticipé.
                 </p>
-                <p className="mt-1 font-semibold text-slate-600">
-                  {garage.name} · SIRET {garage.siret} · TVA {garage.tvaNumber} · {garage.address},{' '}
-                  {garage.postalCode} {garage.city} · Tél {garage.phone}
+                <p>
+                  <strong>Clause de réserve de propriété :</strong> Les pièces et fournitures livrées demeurent la propriété du vendeur jusqu'au complet paiement du prix (Loi n° 80-335 du 12 mai 1980). Pièces de rechange issues de l'économie circulaire (PIEC) proposées conformément à l'article L. 224-67 du Code de la consommation. Membre d'un centre de gestion agréé acceptant les règlements par chèque ou carte bancaire.
                 </p>
-                <div className="flex justify-between items-center text-[8.5px] text-slate-400 mt-2 border-t border-slate-100 pt-1">
-                  <span>Format Standard A4 Portrait (210 × 297 mm)</span>
-                  <span>Page 1 / 1</span>
+                <div className="flex justify-between items-center text-[8px] text-slate-400 pt-1 border-t border-slate-200 mt-1 font-medium">
+                  <span>{garage.name} · SIRET {garage.siret} · RCS {garage.rcsNumber || 'Lyon'} · TVA {garage.tvaNumber}</span>
+                  <span>Document officiel A4 (210 × 297 mm) · Page 1 / 1</span>
                   <span>Édité le {new Date().toLocaleDateString('fr-FR')}</span>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Bottom Action Bar on Desk for easy access */}
+          <div className="w-full max-w-[210mm] mt-4 mb-8 flex flex-wrap items-center justify-between gap-3 p-3.5 bg-white/95 backdrop-blur-xs rounded-xl border border-slate-300 shadow-md no-print">
+            <div className="text-xs text-slate-700 flex items-center gap-2">
+              <FileCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+              <div>
+                <span className="font-bold text-slate-900">Feuille prête pour l'impression A4 :</span>{' '}
+                <span className="text-slate-600">Cliquez sur « Imprimer » ou utilisez <kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono text-[10px] text-slate-800">Ctrl + P</kbd></span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleDownloadHtml}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-lg border border-slate-300 transition-colors shadow-2xs"
+                title="Télécharger la feuille A4 pour l'imprimer sans contrainte de navigateur"
+              >
+                <Download className="w-3.5 h-3.5 text-sky-600" />
+                <span>Télécharger la Feuille</span>
+              </button>
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm hover:shadow transition-all"
+                title="Lancer l'impression directe de cette feuille A4"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Imprimer cette Feuille A4</span>
+              </button>
             </div>
           </div>
         </div>

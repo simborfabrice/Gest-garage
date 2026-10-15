@@ -13,6 +13,7 @@ import {
   ArrowDownRight,
   Eye,
   Edit3,
+  Printer,
 } from 'lucide-react';
 import { formatDate } from '../../utils/dateUtils';
 
@@ -400,9 +401,17 @@ export const AccountingTab: React.FC = () => {
                   const remaining = inv.totalTTC - inv.amountPaid;
 
                   return (
-                    <tr key={inv.id} className="hover:bg-slate-50/70">
-                      <td className="py-3 px-4 font-mono font-bold text-slate-900">
-                        {inv.referenceNumber}
+                    <tr
+                      key={inv.id}
+                      onClick={() => setViewingDocument(inv)}
+                      className="hover:bg-sky-50/80 cursor-pointer transition-colors group"
+                      title={`Cliquer pour apercevoir la facture #${inv.referenceNumber} et l'imprimer`}
+                    >
+                      <td className="py-3 px-4 font-mono font-bold text-slate-900 group-hover:text-sky-600 transition-colors">
+                        <div className="flex items-center gap-1.5">
+                          <span>{inv.referenceNumber}</span>
+                          <Eye className="w-3 h-3 text-slate-400 group-hover:text-sky-600" />
+                        </div>
                       </td>
                       <td className="py-3 px-4 font-semibold text-slate-800">
                         {client ? (client.type === 'professionnel' ? client.companyName : `${client.firstName} ${client.lastName}`) : 'Client inconnu'}
@@ -419,19 +428,26 @@ export const AccountingTab: React.FC = () => {
                       <td className="py-3 px-4 text-right font-mono font-bold text-rose-600 tabular-nums text-sm">
                         {remaining.toFixed(2)} €
                       </td>
-                      <td className="py-3 px-4 text-right">
+                      <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
-                            onClick={() => setViewingDocument(inv)}
-                            className="px-2.5 py-1 text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded font-semibold text-[11px] transition-colors"
-                            title="Aperçu avant impression au format A4 avec logo officiel et mentions légales"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setViewingDocument(inv);
+                            }}
+                            className="flex items-center gap-1 px-2 py-1 text-emerald-800 hover:text-emerald-950 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded font-medium text-[11px] transition-colors"
+                            title="Apercevoir la facture et l'imprimer"
                           >
-                            Aperçu A4
+                            <Printer className="w-3 h-3 text-emerald-600" />
+                            <span>Aperçu</span>
                           </button>
                           <button
                             type="button"
-                            onClick={() => setEditingDocument(inv)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingDocument(inv);
+                            }}
                             className="flex items-center gap-1 px-2 py-1 text-sky-700 hover:text-sky-900 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded font-medium text-[11px] transition-colors"
                             title="Modifier cette facture existante"
                           >

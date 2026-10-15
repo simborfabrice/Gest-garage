@@ -288,15 +288,6 @@ export const SuppliersTab: React.FC = () => {
                         </td>
                         <td className="py-3 px-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => setViewingSupplierOrder(order)}
-                              className="flex items-center gap-1 px-2.5 py-1 text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded text-[11px] font-semibold transition-colors"
-                              title="Aperçu avant impression au format A4"
-                            >
-                              <Eye className="w-3.5 h-3.5 text-sky-600" />
-                              <span>Aperçu A4</span>
-                            </button>
 
                             <button
                               type="button"

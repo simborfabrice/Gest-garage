@@ -8,7 +8,6 @@ import {
   Eye,
   Edit3,
   ArrowRight,
-  Printer,
   Trash2,
   CheckCircle,
   Clock,
@@ -20,6 +19,7 @@ import {
   BookmarkPlus,
   Wrench,
   Database,
+  Printer,
 } from 'lucide-react';
 import { CatalogItem, DocumentItem, DocumentType, GarageDocument } from '../../types';
 import { CatalogShortcutsModal } from '../CatalogShortcutsModal';
@@ -376,13 +376,13 @@ export const DocumentsTab: React.FC = () => {
             }}
             className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg shadow-2xs transition-colors ${
               quickSelectedDocId
-                ? 'bg-slate-900 text-white hover:bg-slate-800'
+                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
                 : 'bg-slate-200 text-slate-400 cursor-not-allowed'
             }`}
-            title="Aperçu avant impression au format A4 (avec logo, impression, conversion)"
+            title="Apercevoir directement la feuille de facturation A4 et pouvoir l'imprimer"
           >
-            <Eye className="w-3.5 h-3.5 text-sky-400" />
-            <span>Aperçu A4</span>
+            <Printer className="w-3.5 h-3.5" />
+            <span>Apercevoir & Imprimer</span>
           </button>
 
           <button
@@ -407,7 +407,7 @@ export const DocumentsTab: React.FC = () => {
 
       {/* Tabs Filter Bar */}
       <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
-        <div className="flex items-center gap-1.5 text-xs">
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
           <button
             onClick={() => setFilterType('all')}
             className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
@@ -455,6 +455,20 @@ export const DocumentsTab: React.FC = () => {
         </div>
       </div>
 
+      {/* Helper banner: click any document to preview and print */}
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-700 bg-sky-50/80 border border-sky-200 px-4 py-2 rounded-xl shadow-2xs">
+        <div className="flex items-center gap-2">
+          <Eye className="w-4 h-4 text-sky-600 shrink-0" />
+          <span className="font-semibold text-slate-800">
+            Cliquez sur un document dans le tableau ci-dessous pour voir la feuille et pouvoir l'imprimer.
+          </span>
+        </div>
+        <div className="flex items-center gap-2 text-[11px] font-medium text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded border border-emerald-200">
+          <Printer className="w-3.5 h-3.5 text-emerald-600" />
+          <span>Format Facturation Type A4 Prêt à Imprimer</span>
+        </div>
+      </div>
+
       {/* Documents Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
@@ -485,7 +499,12 @@ export const DocumentsTab: React.FC = () => {
                   const vehicle = vehicles.find((v) => v.id === doc.vehicleId);
 
                   return (
-                    <tr key={doc.id} className="hover:bg-slate-50/70">
+                    <tr
+                      key={doc.id}
+                      onClick={() => setViewingDocument(doc)}
+                      className="hover:bg-sky-50/80 cursor-pointer transition-colors group"
+                      title={`Cliquer sur ce document pour ouvrir l'aperçu format type A4 et pouvoir l'imprimer (#${doc.referenceNumber})`}
+                    >
                       <td className="py-3.5 px-4 font-bold uppercase text-[10px]">
                         <span
                           className="px-2 py-0.5 rounded text-white tracking-wider"
@@ -503,15 +522,10 @@ export const DocumentsTab: React.FC = () => {
                       </td>
 
                       <td className="py-3.5 px-4 font-mono font-bold text-slate-900">
-                        <button
-                          type="button"
-                          onClick={() => setViewingDocument(doc)}
-                          className="hover:text-sky-600 hover:underline font-mono font-bold text-left transition-colors flex items-center gap-1 group"
-                          title="Cliquer pour ouvrir l'aperçu officiel de ce document"
-                        >
-                          <span>{doc.referenceNumber}</span>
-                          <Eye className="w-3 h-3 text-slate-400 group-hover:text-sky-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </button>
+                        <div className="flex items-center gap-1.5 group-hover:text-sky-600 transition-colors">
+                          <span className="font-mono font-bold">{doc.referenceNumber}</span>
+                          <Eye className="w-3.5 h-3.5 text-slate-400 group-hover:text-sky-600 transition-colors" />
+                        </div>
                       </td>
 
                       <td className="py-3.5 px-4 text-slate-500 tabular-nums">
@@ -549,23 +563,29 @@ export const DocumentsTab: React.FC = () => {
                         {getStatusBadge(doc)}
                       </td>
 
-                      <td className="py-3.5 px-4 text-right">
+                      <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
-                          {/* Visualiser / Imprimer A4 */}
+                          {/* BOUTON APERÇU ET IMPRESSION DIRECTE */}
                           <button
                             type="button"
-                            onClick={() => setViewingDocument(doc)}
-                            className="flex items-center gap-1 px-2.5 py-1 text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded text-[11px] font-semibold transition-colors"
-                            title="Aperçu avant impression au format A4 avec logo officiel et mentions légales"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setViewingDocument(doc);
+                            }}
+                            className="flex items-center gap-1 px-2.5 py-1 text-emerald-800 hover:text-emerald-950 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded text-[11px] font-semibold transition-colors shadow-2xs"
+                            title="Apercevoir la feuille de facturation A4 et l'imprimer"
                           >
-                            <Eye className="w-3.5 h-3.5 text-sky-600" />
-                            <span className="hidden md:inline">Aperçu A4</span>
+                            <Printer className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Aperçu & Imprimer</span>
                           </button>
 
                           {/* MODIFIER LE DOCUMENT EXISTANT */}
                           <button
                             type="button"
-                            onClick={() => setEditingDocument(doc)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingDocument(doc);
+                            }}
                             className="flex items-center gap-1 px-2.5 py-1 text-sky-800 hover:text-sky-950 bg-sky-50 hover:bg-sky-100 border border-sky-300 rounded text-[11px] font-semibold transition-colors shadow-2xs"
                             title="Modifier ce document (prestations, pièces, main d'œuvre, tarifs, client, mentions)"
                           >
@@ -577,7 +597,10 @@ export const DocumentsTab: React.FC = () => {
                           {doc.type === 'devis' && (
                             <button
                               type="button"
-                              onClick={() => convertQuoteToOrder(doc.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                convertQuoteToOrder(doc.id);
+                              }}
                               className="p-1.5 text-emerald-700 hover:bg-emerald-50 rounded transition-colors"
                               title="Transformer ce devis en bon de commande"
                             >
@@ -588,7 +611,10 @@ export const DocumentsTab: React.FC = () => {
                           {doc.type === 'bon_commande' && (
                             <button
                               type="button"
-                              onClick={() => convertOrderToInvoice(doc.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                convertOrderToInvoice(doc.id);
+                              }}
                               className="p-1.5 text-blue-700 hover:bg-blue-50 rounded transition-colors"
                               title="Émettre la facture finale"
                             >
@@ -599,7 +625,8 @@ export const DocumentsTab: React.FC = () => {
                           {doc.type === 'facture' && doc.status !== 'paye' && (
                             <button
                               type="button"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 updateDocument(doc.id, { status: 'paye', amountPaid: doc.totalTTC });
                               }}
                               className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
@@ -611,7 +638,8 @@ export const DocumentsTab: React.FC = () => {
 
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               if (confirm(`Supprimer le document ${doc.referenceNumber} ?`)) {
                                 deleteDocument(doc.id);
                               }

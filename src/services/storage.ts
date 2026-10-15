@@ -52,11 +52,14 @@ export const DEFAULT_GARAGE: GarageSettings = {
   website: 'www.garage-mecapro-lyon.fr',
   siret: '849 321 456 00018',
   tvaNumber: 'FR 42 849321456',
-  nafCode: '4520A - Entretien et réparation de véhicules automobiles légers',
+  nafCode: '4520A - Entretien et réparation de véhicules légers',
+  rcsNumber: 'RCS Lyon B 849 321 456',
+  legalForm: 'SARL au capital de 25 000 €',
+  insuranceName: 'RC Professionnelle & Décennale Garage N° AXA-8492019',
   bankIban: 'FR76 3000 4001 2345 6789 0123 456',
   bankBic: 'BNPAFR2X',
   legalNotes:
-    'Règlement à réception de facture. Tout retard de paiement donne lieu de plein droit à une indemnité forfaitaire pour frais de recouvrement de 40 € et à des pénalités au taux légal en vigueur. Pièces garanties 1 an selon conditions constructeur.',
+    'Règlement à réception de facture. Tout retard de paiement donne lieu de plein droit à une indemnité forfaitaire légale de 40 € pour frais de recouvrement (art. D. 441-5 C. com.) et à des pénalités au taux légal en vigueur majoré de 10 points. Pas d’escompte pour paiement anticipé. Pièces garanties 1 an selon conditions constructeur.',
 };
 
 const INITIAL_CLIENTS: Client[] = [
