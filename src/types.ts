@@ -55,9 +55,9 @@ export interface Vehicle {
   model: string;
   year: number;
   fuelType: 'essence' | 'diesel' | 'hybride' | 'electrique' | 'gpl';
-  vin: string;
+  vin?: string;
   mileage: number;
-  lastInspectionDate: string;
+  lastInspectionDate?: string;
 }
 
 export interface Client {

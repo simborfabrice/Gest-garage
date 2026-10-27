@@ -20,8 +20,10 @@ import {
   Wrench,
   Database,
   Printer,
+  User,
+  Car,
 } from 'lucide-react';
-import { CatalogItem, DocumentItem, DocumentType, GarageDocument } from '../../types';
+import { CatalogItem, DocumentItem, DocumentType, GarageDocument, Vehicle, Client } from '../../types';
 import { CatalogShortcutsModal } from '../CatalogShortcutsModal';
 import { formatDate } from '../../utils/dateUtils';
 
@@ -37,7 +39,9 @@ export const DocumentsTab: React.FC = () => {
     setEditingDocument,
     setIsBackupModalOpen,
     clients,
+    addClient,
     vehicles,
+    addVehicle,
     theme,
     setActiveTab,
     catalogItems,
@@ -56,6 +60,25 @@ export const DocumentsTab: React.FC = () => {
   const [newDocType, setNewDocType] = useState<DocumentType>('devis');
   const [newClientId, setNewClientId] = useState(clients[0]?.id || '');
   const [newVehicleId, setNewVehicleId] = useState(vehicles[0]?.id || '');
+
+  // Direct client and vehicle entry modes
+  const [clientInputMode, setClientInputMode] = useState<'select' | 'direct'>('select');
+  const [directClientType, setDirectClientType] = useState<'particulier' | 'professionnel'>('particulier');
+  const [directClientLastName, setDirectClientLastName] = useState('');
+  const [directClientFirstName, setDirectClientFirstName] = useState('');
+  const [directClientCompany, setDirectClientCompany] = useState('');
+  const [directClientPhone, setDirectClientPhone] = useState('');
+  const [directClientEmail, setDirectClientEmail] = useState('');
+  const [directClientAddress, setDirectClientAddress] = useState('');
+  const [directClientPostalCode, setDirectClientPostalCode] = useState('');
+  const [directClientCity, setDirectClientCity] = useState('');
+
+  const [vehicleInputMode, setVehicleInputMode] = useState<'select' | 'direct'>('select');
+  const [directVehiclePlate, setDirectVehiclePlate] = useState('');
+  const [directVehicleBrand, setDirectVehicleBrand] = useState('');
+  const [directVehicleModel, setDirectVehicleModel] = useState('');
+  const [directVehicleYear, setDirectVehicleYear] = useState<number>(2020);
+  const [directVehicleFuel, setDirectVehicleFuel] = useState<Vehicle['fuelType']>('diesel');
 
   // Helpers for dynamic current date & +30 days
   const getTodayIso = () => {
@@ -158,14 +181,10 @@ export const DocumentsTab: React.FC = () => {
   };
 
   const handleSaveLineAsShortcut = (it: Omit<DocumentItem, 'id'>) => {
-    if (!it.description.trim()) {
-      alert('Veuillez renseigner une désignation avant d’enregistrer comme raccourci.');
-      return;
-    }
     addCatalogItem({
       type: it.type,
       reference: it.reference || `REF-${Math.floor(Math.random() * 9000 + 1000)}`,
-      description: it.description,
+      description: it.description?.trim() || 'Prestation d’atelier',
       defaultQuantity: it.quantity || 1,
       unitPriceHT: it.unitPriceHT || 0,
       tvaRate: it.tvaRate || 20,
@@ -182,9 +201,66 @@ export const DocumentsTab: React.FC = () => {
 
   const handleCreateDocument = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newClientId || !newVehicleId) {
-      alert('Veuillez sélectionner un client et un véhicule.');
-      return;
+
+    let targetClientId = newClientId;
+    let targetVehicleId = newVehicleId;
+
+    // Direct client creation or fallback
+    if (clientInputMode === 'direct') {
+      const createdCli = addClient({
+        type: directClientType,
+        lastName: directClientLastName.trim() || (directClientType === 'professionnel' ? (directClientCompany.trim() || 'Société') : 'Client'),
+        firstName: directClientFirstName.trim(),
+        companyName: directClientType === 'professionnel' ? directClientCompany.trim() : undefined,
+        phone: directClientPhone.trim(),
+        email: directClientEmail.trim(),
+        address: directClientAddress.trim(),
+        postalCode: directClientPostalCode.trim(),
+        city: directClientCity.trim(),
+      });
+      targetClientId = createdCli.id;
+    } else if (!targetClientId && clients.length > 0) {
+      targetClientId = clients[0].id;
+    } else if (!targetClientId) {
+      const fallbackCli = addClient({
+        type: 'particulier',
+        firstName: 'Client',
+        lastName: 'Atelier',
+        email: '',
+        phone: '',
+        address: '',
+        postalCode: '',
+        city: '',
+      });
+      targetClientId = fallbackCli.id;
+    }
+
+    // Direct vehicle creation or fallback
+    if (vehicleInputMode === 'direct') {
+      const createdVeh = addVehicle({
+        clientId: targetClientId,
+        licensePlate: directVehiclePlate.trim().toUpperCase() || 'SANS-PLAQUE',
+        brand: directVehicleBrand.trim() || 'Véhicule',
+        model: directVehicleModel.trim() || 'Atelier',
+        year: Number(directVehicleYear) || 2020,
+        fuelType: directVehicleFuel,
+        mileage: Number(newMileage) || 0,
+      });
+      targetVehicleId = createdVeh.id;
+    } else if (!targetVehicleId && vehicles.length > 0) {
+      const foundClientVeh = vehicles.find((v) => v.clientId === targetClientId);
+      targetVehicleId = foundClientVeh ? foundClientVeh.id : vehicles[0].id;
+    } else if (!targetVehicleId) {
+      const fallbackVeh = addVehicle({
+        clientId: targetClientId,
+        licensePlate: 'ATELIER',
+        brand: 'Véhicule',
+        model: 'Client',
+        year: 2020,
+        fuelType: 'diesel',
+        mileage: Number(newMileage) || 0,
+      });
+      targetVehicleId = fallbackVeh.id;
     }
 
     const prefix = newDocType === 'devis' ? 'DEV' : newDocType === 'bon_commande' ? 'BC' : 'FAC';
@@ -194,19 +270,31 @@ export const DocumentsTab: React.FC = () => {
 
     const formattedItems: DocumentItem[] = items.map((it, idx) => ({
       ...it,
+      description: it.description?.trim() || 'Prestation / Pièce',
       id: `it-${Date.now()}-${idx}`,
     }));
 
     const newDoc = addDocument({
       type: newDocType,
       referenceNumber: ref,
-      date: newDate,
+      date: newDate || getTodayIso(),
       validityDate: newDocType === 'devis' ? newValidityDate : undefined,
       dueDate: newDocType === 'facture' ? newDueDate : undefined,
-      clientId: newClientId,
-      vehicleId: newVehicleId,
+      clientId: targetClientId,
+      vehicleId: targetVehicleId,
       status: newDocType === 'devis' ? 'envoye' : newDocType === 'bon_commande' ? 'valide' : 'brouillon',
-      items: formattedItems,
+      items: formattedItems.length > 0 ? formattedItems : [
+        {
+          id: `it-${Date.now()}-0`,
+          type: 'autre',
+          reference: '',
+          description: 'Prestation atelier',
+          quantity: 1,
+          unitPriceHT: 0,
+          discountPercent: 0,
+          tvaRate: 20,
+        },
+      ],
       totalPartsHT: 0,
       totalLaborHT: 0,
       totalHT: 0,
@@ -707,52 +795,287 @@ export const DocumentsTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* Client & Vehicle */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Client *</label>
-                  <select
-                    value={newClientId}
-                    onChange={(e) => {
-                      setNewClientId(e.target.value);
-                      const fv = vehicles.find((v) => v.clientId === e.target.value);
-                      if (fv) setNewVehicleId(fv.id);
-                    }}
-                    className="w-full border border-slate-300 rounded-lg p-2 text-xs"
-                    required
-                  >
-                    {clients.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.type === 'professionnel' ? `${c.companyName} (${c.lastName})` : `${c.firstName} ${c.lastName}`}
-                      </option>
-                    ))}
-                  </select>
+              {/* Section Client avec choix : Sélectionner dans la liste ou Saisie directe libre */}
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
+                  <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                    <User className="w-4 h-4 text-slate-700" />
+                    <span>Client Destinataire</span>
+                  </span>
+                  <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-300 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => setClientInputMode('select')}
+                      className={`px-2.5 py-1 rounded font-medium transition-colors ${
+                        clientInputMode === 'select'
+                          ? 'bg-slate-900 text-white font-bold'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Choisir dans la liste ({clients.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setClientInputMode('direct')}
+                      className={`px-2.5 py-1 rounded font-medium transition-colors ${
+                        clientInputMode === 'direct'
+                          ? 'bg-sky-600 text-white font-bold'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      + Saisie directe nouveau client
+                    </button>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Véhicule rattaché *</label>
-                  <select
-                    value={newVehicleId}
-                    onChange={(e) => setNewVehicleId(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg p-2 text-xs"
-                    required
-                  >
-                    {clientVehicles.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.licensePlate} — {v.brand} {v.model}
-                      </option>
-                    ))}
-                  </select>
+                {clientInputMode === 'select' ? (
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Sélectionner un client existant</label>
+                    <select
+                      value={newClientId}
+                      onChange={(e) => {
+                        setNewClientId(e.target.value);
+                        const fv = vehicles.find((v) => v.clientId === e.target.value);
+                        if (fv) setNewVehicleId(fv.id);
+                      }}
+                      className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                    >
+                      {clients.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.type === 'professionnel' ? `${c.companyName || c.lastName} (${c.firstName} ${c.lastName})` : `${c.firstName} ${c.lastName}`} {c.phone ? `— ${c.phone}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-4 text-xs">
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="directClientTypeRadio"
+                          checked={directClientType === 'particulier'}
+                          onChange={() => setDirectClientType('particulier')}
+                        />
+                        <span>Particulier</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="directClientTypeRadio"
+                          checked={directClientType === 'professionnel'}
+                          onChange={() => setDirectClientType('professionnel')}
+                        />
+                        <span>Professionnel / Société</span>
+                      </label>
+                    </div>
+
+                    {directClientType === 'professionnel' && (
+                      <div>
+                        <label className="font-semibold text-slate-700 block mb-1">Raison sociale / Société</label>
+                        <input
+                          type="text"
+                          value={directClientCompany}
+                          onChange={(e) => setDirectClientCompany(e.target.value)}
+                          placeholder="ex: SARL Express Transports"
+                          className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                        />
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="font-semibold text-slate-700 block mb-1">Prénom</label>
+                        <input
+                          type="text"
+                          value={directClientFirstName}
+                          onChange={(e) => setDirectClientFirstName(e.target.value)}
+                          placeholder="ex: Jean"
+                          className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-semibold text-slate-700 block mb-1">Nom</label>
+                        <input
+                          type="text"
+                          value={directClientLastName}
+                          onChange={(e) => setDirectClientLastName(e.target.value)}
+                          placeholder="ex: Dupont"
+                          className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="font-semibold text-slate-700 block mb-1">Téléphone</label>
+                        <input
+                          type="tel"
+                          value={directClientPhone}
+                          onChange={(e) => setDirectClientPhone(e.target.value)}
+                          placeholder="06 12 34 56 78"
+                          className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-semibold text-slate-700 block mb-1">Email</label>
+                        <input
+                          type="email"
+                          value={directClientEmail}
+                          onChange={(e) => setDirectClientEmail(e.target.value)}
+                          placeholder="client@domaine.fr"
+                          className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="col-span-1">
+                        <label className="font-semibold text-slate-700 block mb-1">Adresse</label>
+                        <input
+                          type="text"
+                          value={directClientAddress}
+                          onChange={(e) => setDirectClientAddress(e.target.value)}
+                          placeholder="12 rue de la Paix"
+                          className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-semibold text-slate-700 block mb-1">Code Postal</label>
+                        <input
+                          type="text"
+                          value={directClientPostalCode}
+                          onChange={(e) => setDirectClientPostalCode(e.target.value)}
+                          placeholder="69000"
+                          className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-semibold text-slate-700 block mb-1">Ville</label>
+                        <input
+                          type="text"
+                          value={directClientCity}
+                          onChange={(e) => setDirectClientCity(e.target.value)}
+                          placeholder="Lyon"
+                          className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Section Véhicule avec choix : Sélectionner existant ou Saisie directe libre */}
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
+                  <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                    <Car className="w-4 h-4 text-slate-700" />
+                    <span>Véhicule Confié</span>
+                  </span>
+                  <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-300 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => setVehicleInputMode('select')}
+                      className={`px-2.5 py-1 rounded font-medium transition-colors ${
+                        vehicleInputMode === 'select'
+                          ? 'bg-slate-900 text-white font-bold'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Véhicule enregistré ({clientVehicles.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setVehicleInputMode('direct')}
+                      className={`px-2.5 py-1 rounded font-medium transition-colors ${
+                        vehicleInputMode === 'direct'
+                          ? 'bg-sky-600 text-white font-bold'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      + Saisie directe véhicule
+                    </button>
+                  </div>
                 </div>
 
+                {vehicleInputMode === 'select' ? (
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Sélectionner un véhicule du client</label>
+                    <select
+                      value={newVehicleId}
+                      onChange={(e) => setNewVehicleId(e.target.value)}
+                      className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                    >
+                      {clientVehicles.length === 0 ? (
+                        <option value="">(Aucun véhicule enregistré — Basculez sur Saisie directe)</option>
+                      ) : (
+                        clientVehicles.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.licensePlate} — {v.brand} {v.model}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">Immatriculation</label>
+                      <input
+                        type="text"
+                        value={directVehiclePlate}
+                        onChange={(e) => setDirectVehiclePlate(e.target.value)}
+                        placeholder="ex: AB-123-CD"
+                        className="w-full border border-slate-300 rounded-lg p-2 text-xs font-mono font-bold uppercase bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">Marque</label>
+                      <input
+                        type="text"
+                        value={directVehicleBrand}
+                        onChange={(e) => setDirectVehicleBrand(e.target.value)}
+                        placeholder="Peugeot, Renault..."
+                        className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">Modèle</label>
+                      <input
+                        type="text"
+                        value={directVehicleModel}
+                        onChange={(e) => setDirectVehicleModel(e.target.value)}
+                        placeholder="208, Clio, C3..."
+                        className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">Carburant</label>
+                      <select
+                        value={directVehicleFuel}
+                        onChange={(e) => setDirectVehicleFuel(e.target.value as any)}
+                        className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                      >
+                        <option value="diesel">Diesel</option>
+                        <option value="essence">Essence</option>
+                        <option value="hybride">Hybride</option>
+                        <option value="electrique">Électrique</option>
+                        <option value="gpl">GPL</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Date, Kilométrage, Mode de règlement */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Date d'émission *</label>
+                  <label className="font-semibold text-slate-700 block mb-1">Date d'émission</label>
                   <input
                     type="date"
                     value={newDate}
                     onChange={(e) => setNewDate(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg p-2 text-xs"
-                    required
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
                   />
                 </div>
 
@@ -762,12 +1085,12 @@ export const DocumentsTab: React.FC = () => {
                     type="number"
                     value={newMileage}
                     onChange={(e) => setNewMileage(Number(e.target.value))}
-                    className="w-full border border-slate-300 rounded-lg p-2 text-xs tabular-nums"
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs tabular-nums bg-white"
                   />
                 </div>
 
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Mode de règlement *</label>
+                  <label className="font-semibold text-slate-700 block mb-1">Mode de règlement</label>
                   <select
                     value={newPaymentMethod}
                     onChange={(e) => setNewPaymentMethod(e.target.value as any)}
@@ -936,7 +1259,6 @@ export const DocumentsTab: React.FC = () => {
                           type="text"
                           placeholder="Désignation de la pièce ou intervention"
                           value={it.description}
-                          required
                           onChange={(e) => {
                             const updated = [...items];
                             updated[idx].description = e.target.value;

@@ -866,10 +866,6 @@ export const DocumentViewerModal: React.FC = () => {
                           {(doc.mileageAtService || vehicle?.mileage || 0).toLocaleString('fr-FR')} km
                         </strong>
                       </div>
-                      <div>
-                        <span className="text-slate-500">VIN : </span>
-                        <strong className="font-mono text-slate-800">{vehicle?.vin || '—'}</strong>
-                      </div>
                       {vehicle?.fuelType && (
                         <div>
                           <span className="text-slate-500">Énergie : </span>
@@ -1171,7 +1167,6 @@ export const DocumentViewerModal: React.FC = () => {
                           {(doc.mileageAtService || vehicle?.mileage || 0).toLocaleString('fr-FR')} km
                         </strong>
                       </p>
-                      <p className="text-slate-500 text-[10px] font-mono">VIN : {vehicle?.vin || '—'}</p>
                     </div>
 
                     <div>
@@ -1478,20 +1473,7 @@ export const DocumentViewerModal: React.FC = () => {
                 </div>
               )}
 
-              {/* PIED DE PAGE LÉGAL OBLIGATOIRE NORMALISÉ (Norme DGFiP & Code de Commerce) */}
-              <div className="mt-4 pt-2.5 border-t border-slate-300 text-[8.5px] text-slate-500 text-center leading-relaxed avoid-break space-y-0.5">
-                <p>
-                  <strong>Mentions légales & pénalités de retard :</strong> En application de l'article L. 441-10 du Code de commerce, tout retard de paiement donne lieu de plein droit et sans mise en demeure préalable à des pénalités d'un taux égal au taux de refinancement de la BCE majoré de 10 points. Une indemnité forfaitaire pour frais de recouvrement de 40 € est due de plein droit pour les professionnels (art. D. 441-5 C. com.). Pas d'escompte pour paiement anticipé.
-                </p>
-                <p>
-                  <strong>Clause de réserve de propriété :</strong> Les pièces et fournitures livrées demeurent la propriété du vendeur jusqu'au complet paiement du prix (Loi n° 80-335 du 12 mai 1980). Pièces de rechange issues de l'économie circulaire (PIEC) proposées conformément à l'article L. 224-67 du Code de la consommation.
-                </p>
-                <div className="flex justify-between items-center text-[8px] text-slate-400 pt-1 border-t border-slate-200 mt-1 font-medium">
-                  <span>{garage.name} · SIRET {garage.siret} · RCS {garage.rcsNumber || 'Lyon'} · TVA {garage.tvaNumber}</span>
-                  <span>Document officiel A4 (210 × 297 mm) · Page 1 / 1</span>
-                  <span>Édité le {new Date().toLocaleDateString('fr-FR')}</span>
-                </div>
-              </div>
+              {/* FIN DU CONTENU DOCUMENT */}
             </div>
           </div>
 

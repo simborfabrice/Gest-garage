@@ -29,6 +29,7 @@ export const ClientsTab: React.FC = () => {
     deleteClient,
     vehicles,
     addVehicle,
+    updateVehicle,
     deleteVehicle,
     documents,
     theme,
@@ -43,7 +44,10 @@ export const ClientsTab: React.FC = () => {
 
   // Modals
   const [isAddClientModalOpen, setIsAddClientModalOpen] = useState(false);
+  const [isEditClientModalOpen, setIsEditClientModalOpen] = useState(false);
   const [isAddVehicleModalOpen, setIsAddVehicleModalOpen] = useState(false);
+  const [isEditVehicleModalOpen, setIsEditVehicleModalOpen] = useState(false);
+  const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
 
   // Client form
   const [clientForm, setClientForm] = useState({
@@ -59,16 +63,38 @@ export const ClientsTab: React.FC = () => {
     notes: '',
   });
 
-  // Vehicle form
+  // Edit Client form
+  const [editClientForm, setEditClientForm] = useState({
+    type: 'particulier' as 'particulier' | 'professionnel',
+    firstName: '',
+    lastName: '',
+    companyName: '',
+    email: '',
+    phone: '',
+    address: '',
+    postalCode: '',
+    city: '',
+    notes: '',
+  });
+
+  // Vehicle form (vin & date CT supprimés)
   const [vehicleForm, setVehicleForm] = useState({
     licensePlate: '',
     brand: '',
     model: '',
     year: 2020,
     fuelType: 'diesel' as Vehicle['fuelType'],
-    vin: '',
     mileage: 50000,
-    lastInspectionDate: '2025-06-01',
+  });
+
+  // Edit Vehicle form
+  const [editVehicleForm, setEditVehicleForm] = useState({
+    licensePlate: '',
+    brand: '',
+    model: '',
+    year: 2020,
+    fuelType: 'diesel' as Vehicle['fuelType'],
+    mileage: 50000,
   });
 
   const filteredClients = clients.filter((c) => {
@@ -96,8 +122,8 @@ export const ClientsTab: React.FC = () => {
     e.preventDefault();
     const newCli = addClient({
       type: clientForm.type,
-      firstName: clientForm.firstName,
-      lastName: clientForm.lastName,
+      firstName: clientForm.firstName.trim() || 'Client',
+      lastName: clientForm.lastName.trim(),
       companyName: clientForm.type === 'professionnel' ? clientForm.companyName : undefined,
       email: clientForm.email,
       phone: clientForm.phone,
@@ -122,20 +148,54 @@ export const ClientsTab: React.FC = () => {
     });
   };
 
+  const handleOpenEditClient = (client: Client) => {
+    setEditClientForm({
+      type: client.type,
+      firstName: client.firstName || '',
+      lastName: client.lastName || '',
+      companyName: client.companyName || '',
+      email: client.email || '',
+      phone: client.phone || '',
+      address: client.address || '',
+      postalCode: client.postalCode || '',
+      city: client.city || '',
+      notes: client.notes || '',
+    });
+    setIsEditClientModalOpen(true);
+  };
+
+  const handleUpdateClient = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedClient) return;
+    const updatedData: Partial<Client> = {
+      type: editClientForm.type,
+      firstName: editClientForm.firstName.trim() || 'Client',
+      lastName: editClientForm.lastName.trim(),
+      companyName: editClientForm.type === 'professionnel' ? editClientForm.companyName : undefined,
+      email: editClientForm.email,
+      phone: editClientForm.phone,
+      address: editClientForm.address,
+      postalCode: editClientForm.postalCode,
+      city: editClientForm.city,
+      notes: editClientForm.notes,
+    };
+    updateClient(selectedClient.id, updatedData);
+    setSelectedClient({ ...selectedClient, ...updatedData });
+    setIsEditClientModalOpen(false);
+  };
+
   const handleSaveVehicle = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedClient) return;
 
     addVehicle({
       clientId: selectedClient.id,
-      licensePlate: vehicleForm.licensePlate.toUpperCase(),
+      licensePlate: vehicleForm.licensePlate.trim().toUpperCase() || 'SANS-PLAQUE',
       brand: vehicleForm.brand,
       model: vehicleForm.model,
-      year: Number(vehicleForm.year),
+      year: Number(vehicleForm.year) || 2020,
       fuelType: vehicleForm.fuelType,
-      vin: vehicleForm.vin.toUpperCase(),
-      mileage: Number(vehicleForm.mileage),
-      lastInspectionDate: vehicleForm.lastInspectionDate,
+      mileage: Number(vehicleForm.mileage) || 0,
     });
 
     setIsAddVehicleModalOpen(false);
@@ -145,10 +205,36 @@ export const ClientsTab: React.FC = () => {
       model: '',
       year: 2020,
       fuelType: 'diesel',
-      vin: '',
       mileage: 50000,
-      lastInspectionDate: '2025-06-01',
     });
+  };
+
+  const handleOpenEditVehicle = (veh: Vehicle) => {
+    setEditingVehicleId(veh.id);
+    setEditVehicleForm({
+      licensePlate: veh.licensePlate,
+      brand: veh.brand,
+      model: veh.model,
+      year: veh.year || 2020,
+      fuelType: veh.fuelType || 'diesel',
+      mileage: veh.mileage || 0,
+    });
+    setIsEditVehicleModalOpen(true);
+  };
+
+  const handleUpdateVehicle = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingVehicleId) return;
+    updateVehicle(editingVehicleId, {
+      licensePlate: editVehicleForm.licensePlate.trim().toUpperCase() || 'SANS-PLAQUE',
+      brand: editVehicleForm.brand,
+      model: editVehicleForm.model,
+      year: Number(editVehicleForm.year) || 2020,
+      fuelType: editVehicleForm.fuelType,
+      mileage: Number(editVehicleForm.mileage) || 0,
+    });
+    setIsEditVehicleModalOpen(false);
+    setEditingVehicleId(null);
   };
 
   const selectedClientVehicles = selectedClient ? vehicles.filter((v) => v.clientId === selectedClient.id) : [];
@@ -322,6 +408,14 @@ export const ClientsTab: React.FC = () => {
 
                 <div className="flex items-center gap-2">
                   <button
+                    onClick={() => handleOpenEditClient(selectedClient)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-lg transition-colors shadow-2xs"
+                    title="Modifier la fiche de ce client à volonté"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 text-sky-600" />
+                    <span>Modifier la fiche client</span>
+                  </button>
+                  <button
                     onClick={() => {
                       if (confirm(`Supprimer définitivement le client ${selectedClient.firstName} ${selectedClient.lastName} ?`)) {
                         deleteClient(selectedClient.id);
@@ -359,7 +453,7 @@ export const ClientsTab: React.FC = () => {
                   <div>
                     <span className="text-[10px] text-slate-400 block">Adresse de facturation</span>
                     <span className="font-semibold text-slate-800">
-                      {selectedClient.address}, {selectedClient.postalCode} {selectedClient.city}
+                      {selectedClient.address ? `${selectedClient.address}, ` : ''}{selectedClient.postalCode} {selectedClient.city}
                     </span>
                   </div>
                 </div>
@@ -392,16 +486,28 @@ export const ClientsTab: React.FC = () => {
                         <span className="px-2 py-0.5 bg-slate-900 text-white rounded font-mono font-bold text-xs tracking-wider">
                           {veh.licensePlate}
                         </span>
-                        <button
-                          onClick={() => {
-                            if (confirm(`Supprimer le véhicule ${veh.licensePlate} ?`)) {
-                              deleteVehicle(veh.id);
-                            }
-                          }}
-                          className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-600 transition-opacity"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditVehicle(veh)}
+                            className="p-1 text-slate-500 hover:text-sky-600 rounded hover:bg-sky-50 transition-colors"
+                            title="Modifier ce véhicule"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Supprimer le véhicule ${veh.licensePlate} ?`)) {
+                                deleteVehicle(veh.id);
+                              }
+                            }}
+                            className="p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 transition-colors"
+                            title="Supprimer ce véhicule"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
 
                       <div>
@@ -414,8 +520,7 @@ export const ClientsTab: React.FC = () => {
                       </div>
 
                       <div className="pt-1 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-600">
-                        <span>Kilométrage : <strong className="text-slate-900">{veh.mileage.toLocaleString('fr-FR')} km</strong></span>
-                        <span>CT : {formatDate(veh.lastInspectionDate)}</span>
+                        <span>Kilométrage : <strong className="text-slate-900">{(veh.mileage || 0).toLocaleString('fr-FR')} km</strong></span>
                       </div>
                     </div>
                   ))}
@@ -523,6 +628,7 @@ export const ClientsTab: React.FC = () => {
                 <span>Nouveau Client</span>
               </h3>
               <button
+                type="button"
                 onClick={() => setIsAddClientModalOpen(false)}
                 className="text-slate-400 hover:text-slate-600 p-1"
               >
@@ -532,7 +638,7 @@ export const ClientsTab: React.FC = () => {
 
             <form onSubmit={handleSaveClient} className="p-6 space-y-4 text-xs">
               <div>
-                <label className="font-semibold text-slate-700 block mb-1">Type de client *</label>
+                <label className="font-semibold text-slate-700 block mb-1">Type de client</label>
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <input
@@ -557,10 +663,9 @@ export const ClientsTab: React.FC = () => {
 
               {clientForm.type === 'professionnel' && (
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Raison sociale / Société *</label>
+                  <label className="font-semibold text-slate-700 block mb-1">Raison sociale / Société</label>
                   <input
                     type="text"
-                    required
                     value={clientForm.companyName}
                     onChange={(e) => setClientForm({ ...clientForm, companyName: e.target.value })}
                     className="w-full border border-slate-300 rounded-lg p-2 text-xs"
@@ -571,22 +676,22 @@ export const ClientsTab: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Prénom *</label>
+                  <label className="font-semibold text-slate-700 block mb-1">Prénom</label>
                   <input
                     type="text"
-                    required
                     value={clientForm.firstName}
                     onChange={(e) => setClientForm({ ...clientForm, firstName: e.target.value })}
+                    placeholder="ex: Jean"
                     className="w-full border border-slate-300 rounded-lg p-2 text-xs"
                   />
                 </div>
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Nom *</label>
+                  <label className="font-semibold text-slate-700 block mb-1">Nom</label>
                   <input
                     type="text"
-                    required
                     value={clientForm.lastName}
                     onChange={(e) => setClientForm({ ...clientForm, lastName: e.target.value })}
+                    placeholder="ex: Dupont"
                     className="w-full border border-slate-300 rounded-lg p-2 text-xs"
                   />
                 </div>
@@ -594,10 +699,9 @@ export const ClientsTab: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Téléphone *</label>
+                  <label className="font-semibold text-slate-700 block mb-1">Téléphone</label>
                   <input
                     type="tel"
-                    required
                     value={clientForm.phone}
                     onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })}
                     placeholder="06 12 34 56 78"
@@ -605,10 +709,9 @@ export const ClientsTab: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Email *</label>
+                  <label className="font-semibold text-slate-700 block mb-1">Email</label>
                   <input
                     type="email"
-                    required
                     value={clientForm.email}
                     onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })}
                     placeholder="client@domaine.fr"
@@ -623,6 +726,7 @@ export const ClientsTab: React.FC = () => {
                   type="text"
                   value={clientForm.address}
                   onChange={(e) => setClientForm({ ...clientForm, address: e.target.value })}
+                  placeholder="ex: 12 rue de la Paix"
                   className="w-full border border-slate-300 rounded-lg p-2 text-xs"
                 />
               </div>
@@ -634,6 +738,7 @@ export const ClientsTab: React.FC = () => {
                     type="text"
                     value={clientForm.postalCode}
                     onChange={(e) => setClientForm({ ...clientForm, postalCode: e.target.value })}
+                    placeholder="69000"
                     className="w-full border border-slate-300 rounded-lg p-2 text-xs"
                   />
                 </div>
@@ -643,9 +748,21 @@ export const ClientsTab: React.FC = () => {
                     type="text"
                     value={clientForm.city}
                     onChange={(e) => setClientForm({ ...clientForm, city: e.target.value })}
+                    placeholder="Lyon"
                     className="w-full border border-slate-300 rounded-lg p-2 text-xs"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Notes / Remarques</label>
+                <textarea
+                  value={clientForm.notes}
+                  onChange={(e) => setClientForm({ ...clientForm, notes: e.target.value })}
+                  rows={2}
+                  className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                  placeholder="Informations complémentaires, préférences..."
+                />
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
@@ -669,7 +786,167 @@ export const ClientsTab: React.FC = () => {
         </div>
       )}
 
-      {/* Add Vehicle Modal */}
+      {/* Edit Client Modal */}
+      {isEditClientModalOpen && selectedClient && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="relative w-full max-w-xl bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden my-8">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-sky-600" />
+                <span>Modifier la Fiche Client</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsEditClientModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateClient} className="p-6 space-y-4 text-xs">
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Type de client</label>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="editClientType"
+                      checked={editClientForm.type === 'particulier'}
+                      onChange={() => setEditClientForm({ ...editClientForm, type: 'particulier' })}
+                    />
+                    <span>Particulier</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="editClientType"
+                      checked={editClientForm.type === 'professionnel'}
+                      onChange={() => setEditClientForm({ ...editClientForm, type: 'professionnel' })}
+                    />
+                    <span>Professionnel / Société</span>
+                  </label>
+                </div>
+              </div>
+
+              {editClientForm.type === 'professionnel' && (
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Raison sociale / Société</label>
+                  <input
+                    type="text"
+                    value={editClientForm.companyName}
+                    onChange={(e) => setEditClientForm({ ...editClientForm, companyName: e.target.value })}
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                    placeholder="ex: SARL Express Transports"
+                  />
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Prénom</label>
+                  <input
+                    type="text"
+                    value={editClientForm.firstName}
+                    onChange={(e) => setEditClientForm({ ...editClientForm, firstName: e.target.value })}
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Nom</label>
+                  <input
+                    type="text"
+                    value={editClientForm.lastName}
+                    onChange={(e) => setEditClientForm({ ...editClientForm, lastName: e.target.value })}
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Téléphone</label>
+                  <input
+                    type="tel"
+                    value={editClientForm.phone}
+                    onChange={(e) => setEditClientForm({ ...editClientForm, phone: e.target.value })}
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={editClientForm.email}
+                    onChange={(e) => setEditClientForm({ ...editClientForm, email: e.target.value })}
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Adresse</label>
+                <input
+                  type="text"
+                  value={editClientForm.address}
+                  onChange={(e) => setEditClientForm({ ...editClientForm, address: e.target.value })}
+                  className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Code Postal</label>
+                  <input
+                    type="text"
+                    value={editClientForm.postalCode}
+                    onChange={(e) => setEditClientForm({ ...editClientForm, postalCode: e.target.value })}
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Ville</label>
+                  <input
+                    type="text"
+                    value={editClientForm.city}
+                    onChange={(e) => setEditClientForm({ ...editClientForm, city: e.target.value })}
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Notes / Remarques</label>
+                <textarea
+                  value={editClientForm.notes}
+                  onChange={(e) => setEditClientForm({ ...editClientForm, notes: e.target.value })}
+                  rows={2}
+                  className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setIsEditClientModalOpen(false)}
+                  className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-white font-semibold rounded-lg shadow-xs"
+                  style={{ backgroundColor: theme.primaryColor }}
+                >
+                  Enregistrer les Modifications
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Vehicle Modal (VIN & CT supprimés, saisie libre) */}
       {isAddVehicleModalOpen && selectedClient && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
           <div className="relative w-full max-w-lg bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden my-8">
@@ -679,6 +956,7 @@ export const ClientsTab: React.FC = () => {
                 <span>Ajouter un Véhicule pour {selectedClient.firstName} {selectedClient.lastName}</span>
               </h3>
               <button
+                type="button"
                 onClick={() => setIsAddVehicleModalOpen(false)}
                 className="text-slate-400 hover:text-slate-600 p-1"
               >
@@ -690,11 +968,10 @@ export const ClientsTab: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="font-semibold text-slate-700 block mb-1">
-                    Immatriculation (Plaque) *
+                    Immatriculation (Plaque)
                   </label>
                   <input
                     type="text"
-                    required
                     value={vehicleForm.licensePlate}
                     onChange={(e) => setVehicleForm({ ...vehicleForm, licensePlate: e.target.value })}
                     placeholder="ex: AB-123-CD"
@@ -702,10 +979,9 @@ export const ClientsTab: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Année *</label>
+                  <label className="font-semibold text-slate-700 block mb-1">Année</label>
                   <input
                     type="number"
-                    required
                     value={vehicleForm.year}
                     onChange={(e) => setVehicleForm({ ...vehicleForm, year: Number(e.target.value) })}
                     className="w-full border border-slate-300 rounded-lg p-2 text-xs"
@@ -715,24 +991,22 @@ export const ClientsTab: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Marque *</label>
+                  <label className="font-semibold text-slate-700 block mb-1">Marque</label>
                   <input
                     type="text"
-                    required
                     value={vehicleForm.brand}
                     onChange={(e) => setVehicleForm({ ...vehicleForm, brand: e.target.value })}
-                    placeholder="ex: Peugeot, Renault..."
+                    placeholder="ex: Peugeot, Renault, Audi..."
                     className="w-full border border-slate-300 rounded-lg p-2 text-xs"
                   />
                 </div>
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Modèle / Finition *</label>
+                  <label className="font-semibold text-slate-700 block mb-1">Modèle / Finition</label>
                   <input
                     type="text"
-                    required
                     value={vehicleForm.model}
                     onChange={(e) => setVehicleForm({ ...vehicleForm, model: e.target.value })}
-                    placeholder="ex: 208 1.2 PureTech 100ch"
+                    placeholder="ex: 208, Clio, Golf..."
                     className="w-full border border-slate-300 rounded-lg p-2 text-xs"
                   />
                 </div>
@@ -754,36 +1028,14 @@ export const ClientsTab: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Kilométrage actuel (km) *</label>
+                  <label className="font-semibold text-slate-700 block mb-1">Kilométrage actuel (km)</label>
                   <input
                     type="number"
-                    required
                     value={vehicleForm.mileage}
                     onChange={(e) => setVehicleForm({ ...vehicleForm, mileage: Number(e.target.value) })}
                     className="w-full border border-slate-300 rounded-lg p-2 text-xs tabular-nums"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Numéro de série VIN (17 car.)</label>
-                <input
-                  type="text"
-                  value={vehicleForm.vin}
-                  onChange={(e) => setVehicleForm({ ...vehicleForm, vin: e.target.value })}
-                  placeholder="VF3..."
-                  className="w-full border border-slate-300 rounded-lg p-2 text-xs font-mono uppercase"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Date dernier Contrôle Technique</label>
-                <input
-                  type="date"
-                  value={vehicleForm.lastInspectionDate}
-                  onChange={(e) => setVehicleForm({ ...vehicleForm, lastInspectionDate: e.target.value })}
-                  className="w-full border border-slate-300 rounded-lg p-2 text-xs"
-                />
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
@@ -800,6 +1052,125 @@ export const ClientsTab: React.FC = () => {
                   style={{ backgroundColor: theme.primaryColor }}
                 >
                   Enregistrer le Véhicule
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Vehicle Modal (Modifier la fiche véhicule à volonté, sans VIN ni CT) */}
+      {isEditVehicleModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="relative w-full max-w-lg bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden my-8">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-sky-600" />
+                <span>Modifier la Fiche Véhicule</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditVehicleModalOpen(false);
+                  setEditingVehicleId(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateVehicle} className="p-6 space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Immatriculation (Plaque)
+                  </label>
+                  <input
+                    type="text"
+                    value={editVehicleForm.licensePlate}
+                    onChange={(e) => setEditVehicleForm({ ...editVehicleForm, licensePlate: e.target.value })}
+                    placeholder="ex: AB-123-CD"
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs font-mono font-bold uppercase"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Année</label>
+                  <input
+                    type="number"
+                    value={editVehicleForm.year}
+                    onChange={(e) => setEditVehicleForm({ ...editVehicleForm, year: Number(e.target.value) })}
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Marque</label>
+                  <input
+                    type="text"
+                    value={editVehicleForm.brand}
+                    onChange={(e) => setEditVehicleForm({ ...editVehicleForm, brand: e.target.value })}
+                    placeholder="ex: Peugeot, Renault, Audi..."
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Modèle / Finition</label>
+                  <input
+                    type="text"
+                    value={editVehicleForm.model}
+                    onChange={(e) => setEditVehicleForm({ ...editVehicleForm, model: e.target.value })}
+                    placeholder="ex: 208, Clio, Golf..."
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Énergie / Carburant</label>
+                  <select
+                    value={editVehicleForm.fuelType}
+                    onChange={(e) => setEditVehicleForm({ ...editVehicleForm, fuelType: e.target.value as any })}
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                  >
+                    <option value="diesel">Diesel</option>
+                    <option value="essence">Essence</option>
+                    <option value="hybride">Hybride</option>
+                    <option value="electrique">Électrique</option>
+                    <option value="gpl">GPL</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Kilométrage actuel (km)</label>
+                  <input
+                    type="number"
+                    value={editVehicleForm.mileage}
+                    onChange={(e) => setEditVehicleForm({ ...editVehicleForm, mileage: Number(e.target.value) })}
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs tabular-nums"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditVehicleModalOpen(false);
+                    setEditingVehicleId(null);
+                  }}
+                  className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-white font-semibold rounded-lg shadow-xs"
+                  style={{ backgroundColor: theme.primaryColor }}
+                >
+                  Enregistrer les Modifications
                 </button>
               </div>
             </form>
