@@ -90,18 +90,7 @@ export const DocumentEditorModal: React.FC = () => {
       setItems(
         editingDocument.items && editingDocument.items.length > 0
           ? editingDocument.items.map((it) => ({ ...it }))
-          : [
-              {
-                id: `item-${Date.now()}-1`,
-                type: 'main_oeuvre',
-                reference: 'MO-T1',
-                description: 'Prestation atelier',
-                quantity: 1,
-                unitPriceHT: 68.0,
-                discountPercent: 0,
-                tvaRate: 20,
-              },
-            ]
+          : []
       );
       setClientInputMode('select');
       setVehicleInputMode('select');
@@ -135,7 +124,6 @@ export const DocumentEditorModal: React.FC = () => {
   };
 
   const handleRemoveItem = (index: number) => {
-    if (items.length <= 1) return;
     setItems(items.filter((_, idx) => idx !== index));
   };
 
@@ -204,21 +192,10 @@ export const DocumentEditorModal: React.FC = () => {
       targetVehicleId = foundClientVeh ? foundClientVeh.id : vehicles[0].id;
     }
 
-    const safeItems: DocumentItem[] = items.length > 0 ? items.map((it) => ({
+    const safeItems: DocumentItem[] = items.map((it) => ({
       ...it,
       description: it.description?.trim() || 'Prestation / Pièce',
-    })) : [
-      {
-        id: `item-${Date.now()}-1`,
-        type: 'autre',
-        reference: '',
-        description: 'Prestation atelier',
-        quantity: 1,
-        unitPriceHT: 0,
-        discountPercent: 0,
-        tvaRate: 20,
-      },
-    ];
+    }));
 
     const safeRef = referenceNumber.trim() || editingDocument.referenceNumber || `DOC-${Date.now().toString().slice(-4)}`;
 
@@ -720,10 +697,31 @@ export const DocumentEditorModal: React.FC = () => {
 
             {/* Table of items */}
             <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
-              {items.map((it, idx) => {
-                const lineDiscounted = it.quantity * it.unitPriceHT * (1 - (it.discountPercent || 0) / 100);
+              {items.length === 0 ? (
+                <div className="p-6 bg-slate-50/80 rounded-xl border-2 border-dashed border-slate-200 text-center space-y-2">
+                  <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 text-slate-400 mx-auto flex items-center justify-center">
+                    <Plus className="w-5 h-5 text-slate-500" />
+                  </div>
+                  <p className="text-xs font-semibold text-slate-700">
+                    Aucune prestation ni pièce sur ce document
+                  </p>
+                  <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
+                    Cette section attend que vous ajoutiez une ligne. Cliquez ci-dessous pour insérer votre première prestation ou utilisez les raccourcis d'atelier.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleAddItem}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-sky-800 bg-sky-50 hover:bg-sky-100 border border-sky-300 rounded-lg transition-colors shadow-2xs mt-1"
+                  >
+                    <Plus className="w-4 h-4 text-sky-600" />
+                    <span>Ajouter une ligne</span>
+                  </button>
+                </div>
+              ) : (
+                items.map((it, idx) => {
+                  const lineDiscounted = it.quantity * it.unitPriceHT * (1 - (it.discountPercent || 0) / 100);
 
-                return (
+                  return (
                   <div
                     key={it.id || idx}
                     className="p-3 bg-slate-50/90 rounded-xl border border-slate-200 space-y-2 hover:border-slate-300 transition-all shadow-2xs"
@@ -903,7 +901,7 @@ export const DocumentEditorModal: React.FC = () => {
                     </div>
                   </div>
                 );
-              })}
+              }))}
             </div>
           </div>
 

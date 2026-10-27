@@ -105,26 +105,7 @@ export const DocumentsTab: React.FC = () => {
   const [newMileage, setNewMileage] = useState<number>(100000);
   const [newPaymentMethod, setNewPaymentMethod] = useState<'especes' | 'carte' | 'cheque' | 'virement'>('carte');
 
-  const [items, setItems] = useState<Omit<DocumentItem, 'id'>[]>([
-    {
-      type: 'main_oeuvre',
-      reference: 'MO-T1',
-      description: 'Main d’œuvre entretien mécanique T1',
-      quantity: 1.5,
-      unitPriceHT: 68.0,
-      discountPercent: 0,
-      tvaRate: 20,
-    },
-    {
-      type: 'piece',
-      reference: 'FILT-HUILE',
-      description: 'Filtre à huile moteur purflux',
-      quantity: 1,
-      unitPriceHT: 14.5,
-      discountPercent: 0,
-      tvaRate: 20,
-    },
-  ]);
+  const [items, setItems] = useState<Omit<DocumentItem, 'id'>[]>([]);
 
   const clientVehicles = vehicles.filter((v) => v.clientId === newClientId);
 
@@ -144,8 +125,8 @@ export const DocumentsTab: React.FC = () => {
   });
 
   const handleAddItem = () => {
-    setItems([
-      ...items,
+    setItems((prev) => [
+      ...prev,
       {
         type: 'piece',
         reference: '',
@@ -159,8 +140,7 @@ export const DocumentsTab: React.FC = () => {
   };
 
   const handleRemoveItem = (index: number) => {
-    if (items.length <= 1) return;
-    setItems(items.filter((_, i) => i !== index));
+    setItems((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleInsertShortcut = (item: CatalogItem) => {
@@ -283,18 +263,7 @@ export const DocumentsTab: React.FC = () => {
       clientId: targetClientId,
       vehicleId: targetVehicleId,
       status: newDocType === 'devis' ? 'envoye' : newDocType === 'bon_commande' ? 'valide' : 'brouillon',
-      items: formattedItems.length > 0 ? formattedItems : [
-        {
-          id: `it-${Date.now()}-0`,
-          type: 'autre',
-          reference: '',
-          description: 'Prestation atelier',
-          quantity: 1,
-          unitPriceHT: 0,
-          discountPercent: 0,
-          tvaRate: 20,
-        },
-      ],
+      items: formattedItems,
       totalPartsHT: 0,
       totalLaborHT: 0,
       totalHT: 0,
@@ -306,6 +275,7 @@ export const DocumentsTab: React.FC = () => {
       mileageAtService: newMileage,
     });
 
+    setItems([]);
     setIsCreateModalOpen(false);
     setViewingDocument(newDoc);
   };
@@ -365,6 +335,7 @@ export const DocumentsTab: React.FC = () => {
           <button
             onClick={() => {
               setNewDocType('devis');
+              setItems([]);
               setIsCreateModalOpen(true);
             }}
             className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white rounded-lg transition-opacity hover:opacity-95 shadow-xs"
@@ -760,7 +731,10 @@ export const DocumentsTab: React.FC = () => {
                 <span>Nouveau Document Atelier (Devis / Commande / Facture)</span>
               </h3>
               <button
-                onClick={() => setIsCreateModalOpen(false)}
+                onClick={() => {
+                  setIsCreateModalOpen(false);
+                  setItems([]);
+                }}
                 className="text-slate-400 hover:text-slate-600 p-1"
               >
                 <X className="w-5 h-5" />
@@ -1193,162 +1167,184 @@ export const DocumentsTab: React.FC = () => {
 
                 {/* Table of items */}
                 <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                  {items.map((it, idx) => (
-                    <div
-                      key={idx}
-                      className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 space-y-2 hover:border-slate-300 transition-colors"
-                    >
-                      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
-                        {/* Selector to pick a shortcut directly into this row */}
-                        <select
-                          onChange={(e) => {
-                            const found = catalogItems.find((c) => c.id === e.target.value);
-                            if (found) {
-                              const updated = [...items];
-                              updated[idx] = {
-                                type: found.type,
-                                reference: found.reference,
-                                description: found.description,
-                                quantity: found.defaultQuantity || 1,
-                                unitPriceHT: found.unitPriceHT,
-                                discountPercent: 0,
-                                tvaRate: found.tvaRate,
-                              };
-                              setItems(updated);
-                            }
-                          }}
-                          defaultValue=""
-                          className="w-36 border border-sky-300 bg-sky-50/50 text-sky-900 rounded p-1.5 text-[11px] font-semibold"
-                        >
-                          <option value="">⚡ Remplir via raccourci...</option>
-                          {catalogItems.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.reference ? `[${c.reference}] ` : ''}{c.description.slice(0, 30)} ({c.unitPriceHT}€)
-                            </option>
-                          ))}
-                        </select>
-
-                        <select
-                          value={it.type}
-                          onChange={(e) => {
-                            const updated = [...items];
-                            updated[idx].type = e.target.value as any;
-                            setItems(updated);
-                          }}
-                          className="w-22 border border-slate-300 rounded p-1.5 text-xs bg-white font-medium"
-                        >
-                          <option value="main_oeuvre">M.O</option>
-                          <option value="piece">Pièce</option>
-                          <option value="forfait">Forfait</option>
-                          <option value="autre">Autre</option>
-                        </select>
-
-                        <input
-                          type="text"
-                          placeholder="Réf"
-                          value={it.reference}
-                          onChange={(e) => {
-                            const updated = [...items];
-                            updated[idx].reference = e.target.value;
-                            setItems(updated);
-                          }}
-                          className="w-20 border border-slate-300 rounded p-1.5 text-xs font-mono"
-                        />
-
-                        <input
-                          type="text"
-                          placeholder="Désignation de la pièce ou intervention"
-                          value={it.description}
-                          onChange={(e) => {
-                            const updated = [...items];
-                            updated[idx].description = e.target.value;
-                            setItems(updated);
-                          }}
-                          className="flex-1 min-w-[170px] border border-slate-300 rounded p-1.5 text-xs font-medium bg-white"
-                        />
+                  {items.length === 0 ? (
+                    <div className="p-6 bg-slate-50/80 rounded-xl border-2 border-dashed border-slate-200 text-center space-y-2">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 text-slate-400 mx-auto flex items-center justify-center">
+                        <Plus className="w-5 h-5 text-slate-500" />
                       </div>
-
-                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-200/60 text-xs">
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1">
-                            <span className="text-[11px] text-slate-500">Qté :</span>
-                            <input
-                              type="number"
-                              min="0.1"
-                              step="0.1"
-                              value={it.quantity}
-                              onChange={(e) => {
-                                const updated = [...items];
-                                updated[idx].quantity = Number(e.target.value);
-                                setItems(updated);
-                              }}
-                              className="w-14 border border-slate-300 rounded p-1 text-xs text-right tabular-nums bg-white"
-                            />
-                          </div>
-
-                          <div className="flex items-center gap-1">
-                            <span className="text-[11px] text-slate-500">P.U. HT :</span>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={it.unitPriceHT}
-                              onChange={(e) => {
-                                const updated = [...items];
-                                updated[idx].unitPriceHT = Number(e.target.value);
-                                setItems(updated);
-                              }}
-                              className="w-20 border border-slate-300 rounded p-1 text-xs text-right tabular-nums font-mono font-bold text-slate-900 bg-white"
-                            />
-                            <span className="text-[11px] text-slate-400">€</span>
-                          </div>
-
-                          <div className="flex items-center gap-1">
-                            <span className="text-[11px] text-slate-500">TVA :</span>
-                            <select
-                              value={it.tvaRate}
-                              onChange={(e) => {
-                                const updated = [...items];
-                                updated[idx].tvaRate = Number(e.target.value);
-                                setItems(updated);
-                              }}
-                              className="w-16 border border-slate-300 rounded p-1 text-xs bg-white"
-                            >
-                              <option value={20}>20%</option>
-                              <option value={10}>10%</option>
-                              <option value={5.5}>5.5%</option>
-                              <option value={0}>0%</option>
-                            </select>
-                          </div>
-
-                          <span className="text-[11px] font-mono text-slate-600 pl-2">
-                            Total HT : <strong className="text-slate-900">{(it.quantity * it.unitPriceHT).toFixed(2)} €</strong>
-                          </span>
-                        </div>
-
-                        {/* Actions for this row: Save as shortcut & Delete */}
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleSaveLineAsShortcut(it)}
-                            className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded transition-colors"
-                            title="Enregistrer cette prestation dans vos raccourcis permanents"
-                          >
-                            <BookmarkPlus className="w-3 h-3 text-amber-600" />
-                            <span className="hidden sm:inline">Sauvegarder en raccourci</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItem(idx)}
-                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
-                            title="Supprimer cette ligne"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
+                      <p className="text-xs font-semibold text-slate-700">
+                        Aucune prestation ni pièce ajoutée pour le moment
+                      </p>
+                      <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
+                        Cette section attend que vous ajoutiez une ligne. Cliquez sur le bouton ci-dessous ou insérez un raccourci rapide d'atelier.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleAddItem}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-sky-800 bg-sky-50 hover:bg-sky-100 border border-sky-300 rounded-lg transition-colors shadow-2xs mt-1"
+                      >
+                        <Plus className="w-4 h-4 text-sky-600" />
+                        <span>Ajouter une ligne</span>
+                      </button>
                     </div>
-                  ))}
+                  ) : (
+                    items.map((it, idx) => (
+                      <div
+                        key={idx}
+                        className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 space-y-2 hover:border-slate-300 transition-colors"
+                      >
+                        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+                          {/* Selector to pick a shortcut directly into this row */}
+                          <select
+                            onChange={(e) => {
+                              const found = catalogItems.find((c) => c.id === e.target.value);
+                              if (found) {
+                                const updated = [...items];
+                                updated[idx] = {
+                                  type: found.type,
+                                  reference: found.reference,
+                                  description: found.description,
+                                  quantity: found.defaultQuantity || 1,
+                                  unitPriceHT: found.unitPriceHT,
+                                  discountPercent: 0,
+                                  tvaRate: found.tvaRate,
+                                };
+                                setItems(updated);
+                              }
+                            }}
+                            defaultValue=""
+                            className="w-36 border border-sky-300 bg-sky-50/50 text-sky-900 rounded p-1.5 text-[11px] font-semibold"
+                          >
+                            <option value="">⚡ Remplir via raccourci...</option>
+                            {catalogItems.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.reference ? `[${c.reference}] ` : ''}{c.description.slice(0, 30)} ({c.unitPriceHT}€)
+                              </option>
+                            ))}
+                          </select>
+
+                          <select
+                            value={it.type}
+                            onChange={(e) => {
+                              const updated = [...items];
+                              updated[idx].type = e.target.value as any;
+                              setItems(updated);
+                            }}
+                            className="w-22 border border-slate-300 rounded p-1.5 text-xs bg-white font-medium"
+                          >
+                            <option value="main_oeuvre">M.O</option>
+                            <option value="piece">Pièce</option>
+                            <option value="forfait">Forfait</option>
+                            <option value="autre">Autre</option>
+                          </select>
+
+                          <input
+                            type="text"
+                            placeholder="Réf"
+                            value={it.reference}
+                            onChange={(e) => {
+                              const updated = [...items];
+                              updated[idx].reference = e.target.value;
+                              setItems(updated);
+                            }}
+                            className="w-20 border border-slate-300 rounded p-1.5 text-xs font-mono"
+                          />
+
+                          <input
+                            type="text"
+                            placeholder="Désignation de la pièce ou intervention"
+                            value={it.description}
+                            onChange={(e) => {
+                              const updated = [...items];
+                              updated[idx].description = e.target.value;
+                              setItems(updated);
+                            }}
+                            className="flex-1 min-w-[170px] border border-slate-300 rounded p-1.5 text-xs font-medium bg-white"
+                          />
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-200/60 text-xs">
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                              <span className="text-[11px] text-slate-500">Qté :</span>
+                              <input
+                                type="number"
+                                min="0.1"
+                                step="0.1"
+                                value={it.quantity}
+                                onChange={(e) => {
+                                  const updated = [...items];
+                                  updated[idx].quantity = Number(e.target.value);
+                                  setItems(updated);
+                                }}
+                                className="w-14 border border-slate-300 rounded p-1 text-xs text-right tabular-nums bg-white"
+                              />
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              <span className="text-[11px] text-slate-500">P.U. HT :</span>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={it.unitPriceHT}
+                                onChange={(e) => {
+                                  const updated = [...items];
+                                  updated[idx].unitPriceHT = Number(e.target.value);
+                                  setItems(updated);
+                                }}
+                                className="w-20 border border-slate-300 rounded p-1 text-xs text-right tabular-nums font-mono font-bold text-slate-900 bg-white"
+                              />
+                              <span className="text-[11px] text-slate-400">€</span>
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              <span className="text-[11px] text-slate-500">TVA :</span>
+                              <select
+                                value={it.tvaRate}
+                                onChange={(e) => {
+                                  const updated = [...items];
+                                  updated[idx].tvaRate = Number(e.target.value);
+                                  setItems(updated);
+                                }}
+                                className="w-16 border border-slate-300 rounded p-1 text-xs bg-white"
+                              >
+                                <option value={20}>20%</option>
+                                <option value={10}>10%</option>
+                                <option value={5.5}>5.5%</option>
+                                <option value={0}>0%</option>
+                              </select>
+                            </div>
+
+                            <span className="text-[11px] font-mono text-slate-600 pl-2">
+                              Total HT : <strong className="text-slate-900">{(it.quantity * it.unitPriceHT).toFixed(2)} €</strong>
+                            </span>
+                          </div>
+
+                          {/* Actions for this row: Save as shortcut & Delete */}
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleSaveLineAsShortcut(it)}
+                              className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded transition-colors"
+                              title="Enregistrer cette prestation dans vos raccourcis permanents"
+                            >
+                              <BookmarkPlus className="w-3 h-3 text-amber-600" />
+                              <span className="hidden sm:inline">Sauvegarder en raccourci</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveItem(idx)}
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                              title="Supprimer cette ligne"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -1366,7 +1362,10 @@ export const DocumentsTab: React.FC = () => {
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
                 <button
                   type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
+                  onClick={() => {
+                    setIsCreateModalOpen(false);
+                    setItems([]);
+                  }}
                   className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100"
                 >
                   Annuler

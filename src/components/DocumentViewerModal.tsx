@@ -900,13 +900,23 @@ export const DocumentViewerModal: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
-                        {doc.items.map((it, idx) => {
-                          const discount = it.discountPercent || 0;
-                          const lineHT = it.quantity * it.unitPriceHT * (1 - discount / 100);
-                          const rate = it.tvaRate || 20;
-                          const lineTTC = lineHT * (1 + rate / 100);
+                        {doc.items.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan={8}
+                              className="py-6 px-4 text-center text-slate-400 italic font-medium bg-white"
+                            >
+                              Aucune prestation ni pièce facturée sur ce document.
+                            </td>
+                          </tr>
+                        ) : (
+                          doc.items.map((it, idx) => {
+                            const discount = it.discountPercent || 0;
+                            const lineHT = it.quantity * it.unitPriceHT * (1 - discount / 100);
+                            const rate = it.tvaRate || 20;
+                            const lineTTC = lineHT * (1 + rate / 100);
 
-                          return (
+                            return (
                             <tr
                               key={it.id || idx}
                               className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/80'}
@@ -948,7 +958,7 @@ export const DocumentViewerModal: React.FC = () => {
                               </td>
                             </tr>
                           );
-                        })}
+                        }))}
                       </tbody>
                     </table>
                   </div>
@@ -1238,21 +1248,29 @@ export const DocumentViewerModal: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
-                        {doc.items.map((it, idx) => (
-                          <tr key={idx}>
-                            <td className="py-2 px-2.5 text-center">
-                              <span className="inline-block w-3.5 h-3.5 border border-slate-400 rounded-xs" />
+                        {doc.items.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="py-4 px-2.5 text-center text-slate-400 italic">
+                              Aucune opération ni pièce enregistrée.
                             </td>
-                            <td className="py-2 px-2.5 font-mono text-[10.5px] text-slate-500">
-                              {it.reference || '—'}
-                            </td>
-                            <td className="py-2 px-2.5 font-semibold text-slate-800">
-                              {it.description}
-                            </td>
-                            <td className="py-2 px-2 text-right font-mono">{it.quantity}</td>
-                            <td className="py-2 px-2.5 border-l border-slate-200" />
                           </tr>
-                        ))}
+                        ) : (
+                          doc.items.map((it, idx) => (
+                            <tr key={idx}>
+                              <td className="py-2 px-2.5 text-center">
+                                <span className="inline-block w-3.5 h-3.5 border border-slate-400 rounded-xs" />
+                              </td>
+                              <td className="py-2 px-2.5 font-mono text-[10.5px] text-slate-500">
+                                {it.reference || '—'}
+                              </td>
+                              <td className="py-2 px-2.5 font-semibold text-slate-800">
+                                {it.description}
+                              </td>
+                              <td className="py-2 px-2 text-right font-mono">{it.quantity}</td>
+                              <td className="py-2 px-2.5 border-l border-slate-200" />
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>
