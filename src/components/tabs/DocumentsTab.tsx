@@ -40,6 +40,7 @@ export const DocumentsTab: React.FC = () => {
     setIsBackupModalOpen,
     clients,
     addClient,
+    updateClient,
     vehicles,
     addVehicle,
     theme,
@@ -67,6 +68,8 @@ export const DocumentsTab: React.FC = () => {
   const [directClientLastName, setDirectClientLastName] = useState('');
   const [directClientFirstName, setDirectClientFirstName] = useState('');
   const [directClientCompany, setDirectClientCompany] = useState('');
+  const [directClientSiren, setDirectClientSiren] = useState('');
+  const [selectedClientSiren, setSelectedClientSiren] = useState('');
   const [directClientPhone, setDirectClientPhone] = useState('');
   const [directClientEmail, setDirectClientEmail] = useState('');
   const [directClientAddress, setDirectClientAddress] = useState('');
@@ -106,6 +109,14 @@ export const DocumentsTab: React.FC = () => {
   const [newPaymentMethod, setNewPaymentMethod] = useState<'especes' | 'carte' | 'cheque' | 'virement'>('carte');
 
   const [items, setItems] = useState<Omit<DocumentItem, 'id'>[]>([]);
+
+  const currentSelectedClient = clients.find((c) => c.id === newClientId);
+
+  React.useEffect(() => {
+    if (currentSelectedClient) {
+      setSelectedClientSiren(currentSelectedClient.siren || '');
+    }
+  }, [newClientId, currentSelectedClient?.siren]);
 
   const clientVehicles = vehicles.filter((v) => v.clientId === newClientId);
 
@@ -192,6 +203,7 @@ export const DocumentsTab: React.FC = () => {
         lastName: directClientLastName.trim() || (directClientType === 'professionnel' ? (directClientCompany.trim() || 'Société') : 'Client'),
         firstName: directClientFirstName.trim(),
         companyName: directClientType === 'professionnel' ? directClientCompany.trim() : undefined,
+        siren: directClientType === 'professionnel' ? directClientSiren.trim() : undefined,
         phone: directClientPhone.trim(),
         email: directClientEmail.trim(),
         address: directClientAddress.trim(),
@@ -199,6 +211,11 @@ export const DocumentsTab: React.FC = () => {
         city: directClientCity.trim(),
       });
       targetClientId = createdCli.id;
+    } else if (clientInputMode === 'select' && targetClientId) {
+      const existingCli = clients.find((c) => c.id === targetClientId);
+      if (existingCli && existingCli.type === 'professionnel') {
+        updateClient(targetClientId, { siren: selectedClientSiren.trim() });
+      }
     } else if (!targetClientId && clients.length > 0) {
       targetClientId = clients[0].id;
     } else if (!targetClientId) {
@@ -336,6 +353,7 @@ export const DocumentsTab: React.FC = () => {
             onClick={() => {
               setNewDocType('devis');
               setItems([]);
+              setDirectClientSiren('');
               setIsCreateModalOpen(true);
             }}
             className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white rounded-lg transition-opacity hover:opacity-95 shadow-xs"
@@ -820,6 +838,30 @@ export const DocumentsTab: React.FC = () => {
                         </option>
                       ))}
                     </select>
+
+                    {currentSelectedClient?.type === 'professionnel' && (
+                      <div className="mt-2.5 p-2.5 bg-sky-50/80 border border-sky-200 rounded-lg">
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="font-semibold text-sky-950 text-xs flex items-center gap-1.5">
+                            <span>Numéro SIREN (Société / Professionnel)</span>
+                          </label>
+                          <span className="text-[10px] text-sky-700 font-medium">Modifiable à volonté</span>
+                        </div>
+                        <input
+                          type="text"
+                          value={selectedClientSiren}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSelectedClientSiren(val);
+                            if (newClientId) {
+                              updateClient(newClientId, { siren: val.trim() });
+                            }
+                          }}
+                          placeholder="ex: 123 456 789"
+                          className="w-full border border-sky-300 rounded-lg p-2 text-xs bg-white font-mono"
+                        />
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -845,15 +887,30 @@ export const DocumentsTab: React.FC = () => {
                     </div>
 
                     {directClientType === 'professionnel' && (
-                      <div>
-                        <label className="font-semibold text-slate-700 block mb-1">Raison sociale / Société</label>
-                        <input
-                          type="text"
-                          value={directClientCompany}
-                          onChange={(e) => setDirectClientCompany(e.target.value)}
-                          placeholder="ex: SARL Express Transports"
-                          className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
-                        />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="font-semibold text-slate-700 block mb-1">Raison sociale / Société</label>
+                          <input
+                            type="text"
+                            value={directClientCompany}
+                            onChange={(e) => setDirectClientCompany(e.target.value)}
+                            placeholder="ex: SARL Express Transports"
+                            className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="font-semibold text-slate-700 block">Numéro SIREN</label>
+                            <span className="text-[10px] text-slate-400">9 chiffres</span>
+                          </div>
+                          <input
+                            type="text"
+                            value={directClientSiren}
+                            onChange={(e) => setDirectClientSiren(e.target.value)}
+                            placeholder="ex: 123 456 789"
+                            className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white font-mono"
+                          />
+                        </div>
                       </div>
                     )}
 

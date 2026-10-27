@@ -791,6 +791,11 @@ export const DocumentViewerModal: React.FC = () => {
                           </p>
                           <p className="text-slate-600 text-[10.5px]">Tél : {client.phone}</p>
                           <p className="text-slate-600 text-[10.5px]">Email : {client.email}</p>
+                          {client.type === 'professionnel' && client.siren && (
+                            <p className="text-[11px] font-mono font-bold text-slate-900 pt-0.5">
+                              SIREN : <span className="text-sky-950">{client.siren}</span>
+                            </p>
+                          )}
                           <p className="text-[9.5px] font-mono text-slate-500 pt-0.5">
                             Réf Client : CLI-{client.id.replace('cli-', '').padStart(4, '0')}
                           </p>

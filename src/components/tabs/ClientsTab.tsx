@@ -55,6 +55,7 @@ export const ClientsTab: React.FC = () => {
     firstName: '',
     lastName: '',
     companyName: '',
+    siren: '',
     email: '',
     phone: '',
     address: '',
@@ -69,6 +70,7 @@ export const ClientsTab: React.FC = () => {
     firstName: '',
     lastName: '',
     companyName: '',
+    siren: '',
     email: '',
     phone: '',
     address: '',
@@ -124,7 +126,8 @@ export const ClientsTab: React.FC = () => {
       type: clientForm.type,
       firstName: clientForm.firstName.trim() || 'Client',
       lastName: clientForm.lastName.trim(),
-      companyName: clientForm.type === 'professionnel' ? clientForm.companyName : undefined,
+      companyName: clientForm.type === 'professionnel' ? clientForm.companyName.trim() : undefined,
+      siren: clientForm.type === 'professionnel' ? clientForm.siren.trim() : undefined,
       email: clientForm.email,
       phone: clientForm.phone,
       address: clientForm.address,
@@ -139,6 +142,7 @@ export const ClientsTab: React.FC = () => {
       firstName: '',
       lastName: '',
       companyName: '',
+      siren: '',
       email: '',
       phone: '',
       address: '',
@@ -154,6 +158,7 @@ export const ClientsTab: React.FC = () => {
       firstName: client.firstName || '',
       lastName: client.lastName || '',
       companyName: client.companyName || '',
+      siren: client.siren || '',
       email: client.email || '',
       phone: client.phone || '',
       address: client.address || '',
@@ -171,7 +176,8 @@ export const ClientsTab: React.FC = () => {
       type: editClientForm.type,
       firstName: editClientForm.firstName.trim() || 'Client',
       lastName: editClientForm.lastName.trim(),
-      companyName: editClientForm.type === 'professionnel' ? editClientForm.companyName : undefined,
+      companyName: editClientForm.type === 'professionnel' ? editClientForm.companyName.trim() : undefined,
+      siren: editClientForm.type === 'professionnel' ? editClientForm.siren.trim() : undefined,
       email: editClientForm.email,
       phone: editClientForm.phone,
       address: editClientForm.address,
@@ -396,9 +402,16 @@ export const ClientsTab: React.FC = () => {
                         : `${selectedClient.firstName} ${selectedClient.lastName}`}
                     </h3>
                     {selectedClient.type === 'professionnel' && (
-                      <p className="text-xs text-slate-500">
-                        Contact : {selectedClient.firstName} {selectedClient.lastName}
-                      </p>
+                      <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                        <p className="text-xs text-slate-500">
+                          Contact : {selectedClient.firstName} {selectedClient.lastName}
+                        </p>
+                        {selectedClient.siren && (
+                          <span className="text-[11px] font-mono font-bold text-sky-800 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded">
+                            SIREN : {selectedClient.siren}
+                          </span>
+                        )}
+                      </div>
                     )}
                     <p className="text-[11px] text-slate-400">
                       Client enregistré le {formatDate(selectedClient.createdAt)}
@@ -830,15 +843,27 @@ export const ClientsTab: React.FC = () => {
               </div>
 
               {editClientForm.type === 'professionnel' && (
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Raison sociale / Société</label>
-                  <input
-                    type="text"
-                    value={editClientForm.companyName}
-                    onChange={(e) => setEditClientForm({ ...editClientForm, companyName: e.target.value })}
-                    className="w-full border border-slate-300 rounded-lg p-2 text-xs"
-                    placeholder="ex: SARL Express Transports"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Raison sociale / Société</label>
+                    <input
+                      type="text"
+                      value={editClientForm.companyName}
+                      onChange={(e) => setEditClientForm({ ...editClientForm, companyName: e.target.value })}
+                      className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                      placeholder="ex: SARL Express Transports"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Numéro SIREN</label>
+                    <input
+                      type="text"
+                      value={editClientForm.siren}
+                      onChange={(e) => setEditClientForm({ ...editClientForm, siren: e.target.value })}
+                      className="w-full border border-slate-300 rounded-lg p-2 text-xs font-mono"
+                      placeholder="ex: 123 456 789"
+                    />
+                  </div>
                 </div>
               )}
 

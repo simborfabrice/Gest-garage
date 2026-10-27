@@ -82,6 +82,7 @@ const INITIAL_CLIENTS: Client[] = [
     firstName: 'Sophie',
     lastName: 'Laurent',
     companyName: 'Express Coursier SARL',
+    siren: '849 512 630',
     email: 'contact@expresscoursier.fr',
     phone: '04 72 80 90 10',
     address: '5 Rue Garibaldi',

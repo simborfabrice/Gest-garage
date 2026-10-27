@@ -27,6 +27,7 @@ export const DocumentEditorModal: React.FC = () => {
     viewingDocument,
     setViewingDocument,
     clients,
+    updateClient,
     vehicles,
     theme,
     catalogItems,
@@ -59,6 +60,8 @@ export const DocumentEditorModal: React.FC = () => {
   const [directClientLastName, setDirectClientLastName] = useState('');
   const [directClientFirstName, setDirectClientFirstName] = useState('');
   const [directClientCompany, setDirectClientCompany] = useState('');
+  const [directClientSiren, setDirectClientSiren] = useState('');
+  const [clientSiren, setClientSiren] = useState('');
   const [directClientPhone, setDirectClientPhone] = useState('');
   const [directClientEmail, setDirectClientEmail] = useState('');
   const [directClientAddress, setDirectClientAddress] = useState('');
@@ -94,11 +97,16 @@ export const DocumentEditorModal: React.FC = () => {
       );
       setClientInputMode('select');
       setVehicleInputMode('select');
+      const docCli = clients.find((c) => c.id === editingDocument.clientId);
+      if (docCli) {
+        setClientSiren(docCli.siren || '');
+      }
     }
-  }, [editingDocument]);
+  }, [editingDocument, clients]);
 
   if (!editingDocument) return null;
 
+  const currentClient = clients.find((c) => c.id === clientId);
   const clientVehicles = vehicles.filter((v) => v.clientId === clientId);
 
   // Live calculation of totals
@@ -165,6 +173,7 @@ export const DocumentEditorModal: React.FC = () => {
         lastName: directClientLastName.trim() || (directClientType === 'professionnel' ? (directClientCompany.trim() || 'Société') : 'Client'),
         firstName: directClientFirstName.trim(),
         companyName: directClientType === 'professionnel' ? directClientCompany.trim() : undefined,
+        siren: directClientType === 'professionnel' ? directClientSiren.trim() : undefined,
         phone: directClientPhone.trim(),
         email: directClientEmail.trim(),
         address: directClientAddress.trim(),
@@ -172,6 +181,11 @@ export const DocumentEditorModal: React.FC = () => {
         city: directClientCity.trim(),
       });
       targetClientId = createdCli.id;
+    } else if (clientInputMode === 'select' && targetClientId) {
+      const existingCli = clients.find((c) => c.id === targetClientId);
+      if (existingCli && existingCli.type === 'professionnel') {
+        updateClient(targetClientId, { siren: clientSiren.trim() });
+      }
     } else if (!targetClientId && clients.length > 0) {
       targetClientId = clients[0].id;
     }
@@ -426,65 +440,139 @@ export const DocumentEditorModal: React.FC = () => {
                 </div>
 
                 {clientInputMode === 'select' ? (
-                  <select
-                    value={clientId}
-                    onChange={(e) => {
-                      const newCId = e.target.value;
-                      setClientId(newCId);
-                      const matchingVehicles = vehicles.filter((v) => v.clientId === newCId);
-                      if (matchingVehicles.length > 0) {
-                        setVehicleId(matchingVehicles[0].id);
-                      }
-                    }}
-                    className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
-                  >
-                    {clients.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.type === 'professionnel' ? `${c.companyName || c.lastName} (${c.firstName} ${c.lastName})` : `${c.firstName} ${c.lastName}`} {c.phone ? `— ${c.phone}` : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <div>
+                    <select
+                      value={clientId}
+                      onChange={(e) => {
+                        const newCId = e.target.value;
+                        setClientId(newCId);
+                        const matchingVehicles = vehicles.filter((v) => v.clientId === newCId);
+                        if (matchingVehicles.length > 0) {
+                          setVehicleId(matchingVehicles[0].id);
+                        }
+                      }}
+                      className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                    >
+                      {clients.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.type === 'professionnel' ? `${c.companyName || c.lastName} (${c.firstName} ${c.lastName})` : `${c.firstName} ${c.lastName}`} {c.phone ? `— ${c.phone}` : ''}
+                        </option>
+                      ))}
+                    </select>
+
+                    {currentClient?.type === 'professionnel' && (
+                      <div className="mt-2.5 p-2.5 bg-sky-50/80 border border-sky-200 rounded-lg">
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="font-semibold text-sky-950 text-xs flex items-center gap-1.5">
+                            <span>Numéro SIREN (Société / Professionnel)</span>
+                          </label>
+                          <span className="text-[10px] text-sky-700 font-medium">Modifiable à volonté</span>
+                        </div>
+                        <input
+                          type="text"
+                          value={clientSiren}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setClientSiren(val);
+                            if (clientId) {
+                              updateClient(clientId, { siren: val.trim() });
+                            }
+                          }}
+                          placeholder="ex: 123 456 789"
+                          className="w-full border border-sky-300 rounded-lg p-2 text-xs bg-white font-mono"
+                        />
+                      </div>
+                    )}
+                  </div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                    <div>
-                      <label className="text-[10px] text-slate-500 block mb-0.5">Nom / Société</label>
-                      <input
-                        type="text"
-                        value={directClientLastName}
-                        onChange={(e) => setDirectClientLastName(e.target.value)}
-                        placeholder="Dupont ou Société"
-                        className="w-full border border-slate-300 rounded p-1.5 text-xs bg-white"
-                      />
+                  <div className="space-y-2 text-xs">
+                    <div className="flex items-center gap-4 text-xs pb-1">
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="directClientTypeModal"
+                          checked={directClientType === 'particulier'}
+                          onChange={() => setDirectClientType('particulier')}
+                        />
+                        <span>Particulier</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="directClientTypeModal"
+                          checked={directClientType === 'professionnel'}
+                          onChange={() => setDirectClientType('professionnel')}
+                        />
+                        <span>Professionnel / Société</span>
+                      </label>
                     </div>
-                    <div>
-                      <label className="text-[10px] text-slate-500 block mb-0.5">Prénom</label>
-                      <input
-                        type="text"
-                        value={directClientFirstName}
-                        onChange={(e) => setDirectClientFirstName(e.target.value)}
-                        placeholder="Jean"
-                        className="w-full border border-slate-300 rounded p-1.5 text-xs bg-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-slate-500 block mb-0.5">Téléphone</label>
-                      <input
-                        type="tel"
-                        value={directClientPhone}
-                        onChange={(e) => setDirectClientPhone(e.target.value)}
-                        placeholder="06 12 34 56 78"
-                        className="w-full border border-slate-300 rounded p-1.5 text-xs bg-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-slate-500 block mb-0.5">Ville</label>
-                      <input
-                        type="text"
-                        value={directClientCity}
-                        onChange={(e) => setDirectClientCity(e.target.value)}
-                        placeholder="Lyon"
-                        className="w-full border border-slate-300 rounded p-1.5 text-xs bg-white"
-                      />
+
+                    {directClientType === 'professionnel' && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] font-semibold text-slate-700 block mb-0.5">Raison sociale / Société</label>
+                          <input
+                            type="text"
+                            value={directClientCompany}
+                            onChange={(e) => setDirectClientCompany(e.target.value)}
+                            placeholder="ex: SARL Express Transports"
+                            className="w-full border border-slate-300 rounded p-1.5 text-xs bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold text-slate-700 block mb-0.5">Numéro SIREN</label>
+                          <input
+                            type="text"
+                            value={directClientSiren}
+                            onChange={(e) => setDirectClientSiren(e.target.value)}
+                            placeholder="ex: 123 456 789"
+                            className="w-full border border-slate-300 rounded p-1.5 text-xs bg-white font-mono"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                      <div>
+                        <label className="text-[10px] text-slate-500 block mb-0.5">Nom</label>
+                        <input
+                          type="text"
+                          value={directClientLastName}
+                          onChange={(e) => setDirectClientLastName(e.target.value)}
+                          placeholder="Dupont"
+                          className="w-full border border-slate-300 rounded p-1.5 text-xs bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 block mb-0.5">Prénom</label>
+                        <input
+                          type="text"
+                          value={directClientFirstName}
+                          onChange={(e) => setDirectClientFirstName(e.target.value)}
+                          placeholder="Jean"
+                          className="w-full border border-slate-300 rounded p-1.5 text-xs bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 block mb-0.5">Téléphone</label>
+                        <input
+                          type="tel"
+                          value={directClientPhone}
+                          onChange={(e) => setDirectClientPhone(e.target.value)}
+                          placeholder="06 12 34 56 78"
+                          className="w-full border border-slate-300 rounded p-1.5 text-xs bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 block mb-0.5">Ville</label>
+                        <input
+                          type="text"
+                          value={directClientCity}
+                          onChange={(e) => setDirectClientCity(e.target.value)}
+                          placeholder="Lyon"
+                          className="w-full border border-slate-300 rounded p-1.5 text-xs bg-white"
+                        />
+                      </div>
                     </div>
                   </div>
                 )}

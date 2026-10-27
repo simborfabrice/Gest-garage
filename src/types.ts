@@ -66,6 +66,7 @@ export interface Client {
   firstName: string;
   lastName: string;
   companyName?: string;
+  siren?: string;
   email: string;
   phone: string;
   address: string;
