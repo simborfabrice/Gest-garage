@@ -739,47 +739,12 @@ export const DocumentEditorModal: React.FC = () => {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsCatalogModalOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-sky-800 bg-sky-50 hover:bg-sky-100 border border-sky-300 transition-colors shadow-2xs"
-                  title="Ouvrir la bibliothèque de forfaits et raccourcis d'atelier"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-sky-600" />
-                  <span>⚡ Catalogue Raccourcis ({catalogItems.length})</span>
-                </button>
-
-                <button
-                  type="button"
                   onClick={handleAddItem}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 transition-colors shadow-xs"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 transition-colors shadow-xs"
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  <Plus className="w-4 h-4" />
                   <span>Ajouter une ligne</span>
                 </button>
-              </div>
-            </div>
-
-            {/* Quick shortcuts pills */}
-            <div className="p-2 bg-slate-100/70 rounded-lg border border-slate-200">
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs">
-                <span className="text-[11px] font-bold text-slate-500 shrink-0 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-amber-500" />
-                  Insérer en 1 clic :
-                </span>
-                {catalogItems.slice(0, 6).map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => handleInsertShortcut(cat)}
-                    className="shrink-0 flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-md border border-slate-200 bg-white hover:bg-sky-50 hover:border-sky-300 hover:text-sky-800 transition-colors text-slate-700 font-medium shadow-2xs group"
-                    title={`Insérer « ${cat.description} » (${cat.unitPriceHT} € HT)`}
-                  >
-                    <Plus className="w-3 h-3 text-sky-600 group-hover:scale-110" />
-                    <span className="truncate max-w-[150px]">{cat.description}</span>
-                    <span className="font-mono font-bold text-[10px] text-slate-500">
-                      {cat.unitPriceHT.toFixed(0)}€
-                    </span>
-                  </button>
-                ))}
               </div>
             </div>
 
@@ -794,7 +759,7 @@ export const DocumentEditorModal: React.FC = () => {
                     Aucune prestation ni pièce sur ce document
                   </p>
                   <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
-                    Cette section attend que vous ajoutiez une ligne. Cliquez ci-dessous pour insérer votre première prestation ou utilisez les raccourcis d'atelier.
+                    Cette section attend que vous ajoutiez une ligne. Cliquez ci-dessous pour insérer votre première prestation.
                   </p>
                   <button
                     type="button"
@@ -815,78 +780,35 @@ export const DocumentEditorModal: React.FC = () => {
                     className="p-3 bg-slate-50/90 rounded-xl border border-slate-200 space-y-2 hover:border-slate-300 transition-all shadow-2xs"
                   >
                     <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
-                      {/* Pick shortcut directly */}
-                      <select
-                        onChange={(e) => {
-                          const found = catalogItems.find((c) => c.id === e.target.value);
-                          if (found) {
+                      <div className="w-28 sm:w-36 shrink-0">
+                        <label className="text-[10px] text-slate-500 block mb-0.5 font-semibold">Référence</label>
+                        <input
+                          type="text"
+                          placeholder="Réf (ex: FILT-01)"
+                          value={it.reference}
+                          onChange={(e) => {
                             const updated = [...items];
-                            updated[idx] = {
-                              ...updated[idx],
-                              type: found.type,
-                              reference: found.reference || '',
-                              description: found.description,
-                              quantity: found.defaultQuantity || 1,
-                              unitPriceHT: found.unitPriceHT,
-                              discountPercent: 0,
-                              tvaRate: found.tvaRate,
-                            };
+                            updated[idx].reference = e.target.value;
                             setItems(updated);
-                          }
-                        }}
-                        defaultValue=""
-                        className="w-36 border border-sky-300 bg-sky-50/50 text-sky-900 rounded-lg p-1.5 text-[11px] font-semibold"
-                        title="Remplir cette ligne avec un raccourci d'atelier"
-                      >
-                        <option value="">⚡ Raccourci...</option>
-                        {catalogItems.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.reference ? `[${c.reference}] ` : ''}{c.description.slice(0, 28)} ({c.unitPriceHT}€)
-                          </option>
-                        ))}
-                      </select>
+                          }}
+                          className="w-full border border-slate-300 rounded-lg p-2 text-xs font-mono bg-white"
+                        />
+                      </div>
 
-                      {/* Type selector */}
-                      <select
-                        value={it.type}
-                        onChange={(e) => {
-                          const updated = [...items];
-                          updated[idx].type = e.target.value as any;
-                          setItems(updated);
-                        }}
-                        className="w-24 border border-slate-300 rounded-lg p-1.5 text-xs bg-white font-medium"
-                      >
-                        <option value="main_oeuvre">M.O</option>
-                        <option value="piece">Pièce</option>
-                        <option value="forfait">Forfait</option>
-                        <option value="autre">Autre</option>
-                      </select>
-
-                      {/* Reference */}
-                      <input
-                        type="text"
-                        placeholder="Réf"
-                        value={it.reference}
-                        onChange={(e) => {
-                          const updated = [...items];
-                          updated[idx].reference = e.target.value;
-                          setItems(updated);
-                        }}
-                        className="w-24 border border-slate-300 rounded-lg p-1.5 text-xs font-mono bg-white"
-                      />
-
-                      {/* Description */}
-                      <input
-                        type="text"
-                        placeholder="Désignation de la prestation ou de la pièce détachée"
-                        value={it.description}
-                        onChange={(e) => {
-                          const updated = [...items];
-                          updated[idx].description = e.target.value;
-                          setItems(updated);
-                        }}
-                        className="flex-1 min-w-[200px] border border-slate-300 rounded-lg p-1.5 text-xs font-medium bg-white text-slate-900"
-                      />
+                      <div className="flex-1 min-w-[200px]">
+                        <label className="text-[10px] text-slate-500 block mb-0.5 font-semibold">Désignation</label>
+                        <input
+                          type="text"
+                          placeholder="Désignation de la prestation ou de la pièce détachée"
+                          value={it.description}
+                          onChange={(e) => {
+                            const updated = [...items];
+                            updated[idx].description = e.target.value;
+                            setItems(updated);
+                          }}
+                          className="w-full border border-slate-300 rounded-lg p-2 text-xs font-medium bg-white text-slate-900"
+                        />
+                      </div>
                     </div>
 
                     {/* Quantity, Unit Price, Discount, TVA & Line Total */}
@@ -909,7 +831,7 @@ export const DocumentEditorModal: React.FC = () => {
                         </div>
 
                         <div className="flex items-center gap-1">
-                          <span className="text-[11px] text-slate-500 font-medium">P.U. HT :</span>
+                          <span className="text-[11px] text-slate-500 font-semibold">P.U. HT :</span>
                           <input
                             type="number"
                             step="0.01"
@@ -922,6 +844,26 @@ export const DocumentEditorModal: React.FC = () => {
                             className="w-24 border border-slate-300 rounded-lg p-1 text-xs text-right tabular-nums font-mono font-bold text-slate-900 bg-white"
                           />
                           <span className="text-[11px] text-slate-400">€</span>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <span className="text-[11px] text-sky-800 font-semibold">P.U. TTC :</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={it.unitPriceHT ? Number((it.unitPriceHT * (1 + (it.tvaRate || 20) / 100)).toFixed(2)) : ''}
+                            onChange={(e) => {
+                              const ttc = Number(e.target.value);
+                              const rate = it.tvaRate || 20;
+                              const ht = ttc / (1 + rate / 100);
+                              const updated = [...items];
+                              updated[idx].unitPriceHT = Number(ht.toFixed(2));
+                              setItems(updated);
+                            }}
+                            placeholder="0.00"
+                            className="w-24 border border-sky-300 rounded-lg p-1 text-xs text-right tabular-nums font-mono font-bold text-sky-950 bg-sky-50/60"
+                          />
+                          <span className="text-[11px] text-sky-600">€</span>
                         </div>
 
                         <div className="flex items-center gap-1">
@@ -960,23 +902,18 @@ export const DocumentEditorModal: React.FC = () => {
                           </select>
                         </div>
 
-                        <span className="text-[11px] font-mono text-slate-600 pl-1">
-                          Total ligne : <strong className="text-slate-900">{lineDiscounted.toFixed(2)} € HT</strong>
-                        </span>
+                        <div className="flex items-center gap-1.5 pl-1 text-[11px] font-mono">
+                          <span className="text-slate-600">
+                            Total : <strong className="text-slate-900">{lineDiscounted.toFixed(2)} € HT</strong>
+                          </span>
+                          <span className="text-sky-900 font-bold bg-sky-50 px-1 py-0.5 rounded border border-sky-200">
+                            {(lineDiscounted * (1 + (it.tvaRate || 20) / 100)).toFixed(2)} € TTC
+                          </span>
+                        </div>
                       </div>
 
                       {/* Line actions */}
                       <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleSaveLineAsShortcut(it)}
-                          className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors"
-                          title="Enregistrer cette prestation dans le catalogue"
-                        >
-                          <BookmarkPlus className="w-3 h-3 text-amber-600" />
-                          <span className="hidden sm:inline">Mémoriser</span>
-                        </button>
-
                         <button
                           type="button"
                           onClick={() => handleRemoveItem(idx)}

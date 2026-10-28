@@ -332,15 +332,6 @@ export const DocumentsTab: React.FC = () => {
 
         <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={() => setIsCatalogModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-sky-800 bg-sky-50 hover:bg-sky-100 border border-sky-300 rounded-lg transition-colors shadow-2xs"
-            title="Consulter, modifier ou ajouter des raccourcis de prestations et pièces d'atelier"
-          >
-            <Sparkles className="w-4 h-4 text-sky-600" />
-            <span>Raccourcis Prestations & Pièces ({catalogItems.length})</span>
-          </button>
-
-          <button
             onClick={() => setIsBackupModalOpen(true)}
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors shadow-2xs"
             title="Sauvegarder ou restaurer l'ensemble des documents, devis, factures et données de l'atelier"
@@ -1146,78 +1137,18 @@ export const DocumentsTab: React.FC = () => {
                       </span>
                     </span>
                     <p className="text-[11px] text-slate-500">
-                      Sélectionnez vos raccourcis d'atelier ou ajoutez vos pièces et forfaits personnalisés.
+                      Ajoutez les pièces et prestations de ce document.
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    {/* Bouton d'accès direct à la bibliothèque de raccourcis */}
-                    <button
-                      type="button"
-                      onClick={() => setIsCatalogModalOpen(true)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-sky-800 bg-sky-50 hover:bg-sky-100 border border-sky-300 transition-colors shadow-2xs"
-                      title="Voir la liste complète des raccourcis, les modifier ou en ajouter de nouveaux"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-sky-600" />
-                      <span>⚡ Liste des Raccourcis ({catalogItems.length})</span>
-                    </button>
-
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={handleAddItem}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 transition-colors shadow-xs"
                     >
-                      <Plus className="w-3.5 h-3.5" />
+                      <Plus className="w-4 h-4" />
                       <span>Ajouter une ligne</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Notification toast if shortcut added or saved */}
-                {catalogNotification && (
-                  <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-lg flex items-center justify-between animate-fadeIn">
-                    <span className="font-medium flex items-center gap-1.5">
-                      <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-                      {catalogNotification}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setCatalogNotification(null)}
-                      className="text-emerald-600 hover:text-emerald-800 font-bold ml-2"
-                    >
-                      ×
-                    </button>
-                  </div>
-                )}
-
-                {/* Quick Shortcuts Bar (Forfaits les plus fréquents en 1 clic) */}
-                <div className="p-2 bg-slate-100/70 rounded-lg border border-slate-200">
-                  <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs">
-                    <span className="text-[11px] font-bold text-slate-500 shrink-0 flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-amber-500" />
-                      Raccourcis rapides :
-                    </span>
-                    {catalogItems.slice(0, 5).map((cat) => (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => handleInsertShortcut(cat)}
-                        className="shrink-0 flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-md border border-slate-200 bg-white hover:bg-sky-50 hover:border-sky-300 hover:text-sky-800 transition-colors text-slate-700 font-medium shadow-2xs group"
-                        title={`Insérer « ${cat.description} » (${cat.unitPriceHT} € HT)`}
-                      >
-                        <Plus className="w-3 h-3 text-sky-600 group-hover:scale-110" />
-                        <span className="truncate max-w-[150px]">{cat.description}</span>
-                        <span className="font-mono font-bold text-[10px] text-slate-500">
-                          {cat.unitPriceHT.toFixed(0)}€
-                        </span>
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => setIsCatalogModalOpen(true)}
-                      className="shrink-0 px-2 py-1 text-[11px] font-semibold text-sky-700 hover:underline"
-                    >
-                      + Voir tous ({catalogItems.length})
                     </button>
                   </div>
                 </div>
@@ -1233,7 +1164,7 @@ export const DocumentsTab: React.FC = () => {
                         Aucune prestation ni pièce ajoutée pour le moment
                       </p>
                       <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
-                        Cette section attend que vous ajoutiez une ligne. Cliquez sur le bouton ci-dessous ou insérez un raccourci rapide d'atelier.
+                        Cette section attend que vous ajoutiez une ligne. Cliquez sur le bouton ci-dessous pour commencer.
                       </p>
                       <button
                         type="button"
@@ -1251,73 +1182,35 @@ export const DocumentsTab: React.FC = () => {
                         className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 space-y-2 hover:border-slate-300 transition-colors"
                       >
                         <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
-                          {/* Selector to pick a shortcut directly into this row */}
-                          <select
-                            onChange={(e) => {
-                              const found = catalogItems.find((c) => c.id === e.target.value);
-                              if (found) {
+                          <div className="w-28 sm:w-36 shrink-0">
+                            <label className="text-[10px] text-slate-500 block mb-0.5 font-semibold">Référence</label>
+                            <input
+                              type="text"
+                              placeholder="Réf (ex: FILT-01)"
+                              value={it.reference}
+                              onChange={(e) => {
                                 const updated = [...items];
-                                updated[idx] = {
-                                  type: found.type,
-                                  reference: found.reference,
-                                  description: found.description,
-                                  quantity: found.defaultQuantity || 1,
-                                  unitPriceHT: found.unitPriceHT,
-                                  discountPercent: 0,
-                                  tvaRate: found.tvaRate,
-                                };
+                                updated[idx].reference = e.target.value;
                                 setItems(updated);
-                              }
-                            }}
-                            defaultValue=""
-                            className="w-36 border border-sky-300 bg-sky-50/50 text-sky-900 rounded p-1.5 text-[11px] font-semibold"
-                          >
-                            <option value="">⚡ Remplir via raccourci...</option>
-                            {catalogItems.map((c) => (
-                              <option key={c.id} value={c.id}>
-                                {c.reference ? `[${c.reference}] ` : ''}{c.description.slice(0, 30)} ({c.unitPriceHT}€)
-                              </option>
-                            ))}
-                          </select>
+                              }}
+                              className="w-full border border-slate-300 rounded-lg p-2 text-xs font-mono bg-white"
+                            />
+                          </div>
 
-                          <select
-                            value={it.type}
-                            onChange={(e) => {
-                              const updated = [...items];
-                              updated[idx].type = e.target.value as any;
-                              setItems(updated);
-                            }}
-                            className="w-22 border border-slate-300 rounded p-1.5 text-xs bg-white font-medium"
-                          >
-                            <option value="main_oeuvre">M.O</option>
-                            <option value="piece">Pièce</option>
-                            <option value="forfait">Forfait</option>
-                            <option value="autre">Autre</option>
-                          </select>
-
-                          <input
-                            type="text"
-                            placeholder="Réf"
-                            value={it.reference}
-                            onChange={(e) => {
-                              const updated = [...items];
-                              updated[idx].reference = e.target.value;
-                              setItems(updated);
-                            }}
-                            className="w-20 border border-slate-300 rounded p-1.5 text-xs font-mono"
-                          />
-
-                          <input
-                            type="text"
-                            placeholder="Désignation de la pièce ou intervention"
-                            value={it.description}
-                            onChange={(e) => {
-                              const updated = [...items];
-                              updated[idx].description = e.target.value;
-                              setItems(updated);
-                            }}
-                            className="flex-1 min-w-[170px] border border-slate-300 rounded p-1.5 text-xs font-medium bg-white"
-                          />
+                          <div className="flex-1 min-w-[200px]">
+                            <label className="text-[10px] text-slate-500 block mb-0.5 font-semibold">Désignation</label>
+                            <input
+                              type="text"
+                              placeholder="Désignation de la pièce ou intervention"
+                              value={it.description}
+                              onChange={(e) => {
+                                const updated = [...items];
+                                updated[idx].description = e.target.value;
+                                setItems(updated);
+                              }}
+                              className="w-full border border-slate-300 rounded-lg p-2 text-xs font-medium bg-white"
+                            />
+                          </div>
                         </div>
 
                         <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-200/60 text-xs">
@@ -1339,7 +1232,7 @@ export const DocumentsTab: React.FC = () => {
                             </div>
 
                             <div className="flex items-center gap-1">
-                              <span className="text-[11px] text-slate-500">P.U. HT :</span>
+                              <span className="text-[11px] text-slate-500 font-semibold">P.U. HT :</span>
                               <input
                                 type="number"
                                 step="0.01"
@@ -1352,6 +1245,26 @@ export const DocumentsTab: React.FC = () => {
                                 className="w-20 border border-slate-300 rounded p-1 text-xs text-right tabular-nums font-mono font-bold text-slate-900 bg-white"
                               />
                               <span className="text-[11px] text-slate-400">€</span>
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              <span className="text-[11px] text-sky-800 font-semibold">P.U. TTC :</span>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={it.unitPriceHT ? Number((it.unitPriceHT * (1 + (it.tvaRate || 20) / 100)).toFixed(2)) : ''}
+                                onChange={(e) => {
+                                  const ttc = Number(e.target.value);
+                                  const rate = it.tvaRate || 20;
+                                  const ht = ttc / (1 + rate / 100);
+                                  const updated = [...items];
+                                  updated[idx].unitPriceHT = Number(ht.toFixed(2));
+                                  setItems(updated);
+                                }}
+                                placeholder="0.00"
+                                className="w-20 border border-sky-300 rounded p-1 text-xs text-right tabular-nums font-mono font-bold text-sky-950 bg-sky-50/60"
+                              />
+                              <span className="text-[11px] text-sky-600">€</span>
                             </div>
 
                             <div className="flex items-center gap-1">
@@ -1372,30 +1285,25 @@ export const DocumentsTab: React.FC = () => {
                               </select>
                             </div>
 
-                            <span className="text-[11px] font-mono text-slate-600 pl-2">
-                              Total HT : <strong className="text-slate-900">{(it.quantity * it.unitPriceHT).toFixed(2)} €</strong>
-                            </span>
+                            <div className="flex items-center gap-2 pl-2 text-[11px] font-mono">
+                              <span className="text-slate-600">
+                                Total HT : <strong className="text-slate-900">{(it.quantity * it.unitPriceHT).toFixed(2)} €</strong>
+                              </span>
+                              <span className="text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded font-bold">
+                                Total TTC : {((it.quantity * it.unitPriceHT) * (1 + (it.tvaRate || 20) / 100)).toFixed(2)} €
+                              </span>
+                            </div>
                           </div>
 
-                          {/* Actions for this row: Save as shortcut & Delete */}
+                          {/* Actions for this row: Delete */}
                           <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => handleSaveLineAsShortcut(it)}
-                              className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded transition-colors"
-                              title="Enregistrer cette prestation dans vos raccourcis permanents"
-                            >
-                              <BookmarkPlus className="w-3 h-3 text-amber-600" />
-                              <span className="hidden sm:inline">Sauvegarder en raccourci</span>
-                            </button>
-
                             <button
                               type="button"
                               onClick={() => handleRemoveItem(idx)}
                               className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
                               title="Supprimer cette ligne"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
                         </div>
@@ -1403,6 +1311,34 @@ export const DocumentsTab: React.FC = () => {
                     ))
                   )}
                 </div>
+
+                {items.length > 0 && (
+                  <div className="p-3 bg-slate-100 rounded-lg border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <span className="text-slate-600 font-medium">
+                      Récapitulatif document ({items.length} ligne{items.length > 1 ? 's' : ''})
+                    </span>
+                    <div className="flex flex-wrap items-center gap-4 font-mono">
+                      <div>
+                        <span className="text-slate-500 text-[11px]">Total HT : </span>
+                        <strong className="text-slate-900 text-xs">
+                          {items.reduce((s, it) => s + it.quantity * it.unitPriceHT, 0).toFixed(2)} €
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 text-[11px]">TVA : </span>
+                        <span className="text-slate-700 text-xs">
+                          {items.reduce((s, it) => s + (it.quantity * it.unitPriceHT * ((it.tvaRate || 20) / 100)), 0).toFixed(2)} €
+                        </span>
+                      </div>
+                      <div className="px-2.5 py-1 bg-white rounded border border-slate-300 shadow-2xs">
+                        <span className="text-slate-700 text-[11px] font-bold">TOTAL TTC : </span>
+                        <strong className="text-emerald-700 text-sm font-black">
+                          {items.reduce((s, it) => s + (it.quantity * it.unitPriceHT * (1 + (it.tvaRate || 20) / 100)), 0).toFixed(2)} €
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>

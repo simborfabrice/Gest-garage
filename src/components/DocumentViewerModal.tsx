@@ -931,15 +931,6 @@ export const DocumentViewerModal: React.FC = () => {
                               </td>
                               <td className="py-2 px-2.5 border-r border-slate-200 font-medium text-slate-800">
                                 <span>{it.description}</span>
-                                <span className="text-[9.5px] font-semibold text-slate-400 ml-1.5">
-                                  {it.type === 'piece'
-                                    ? '[Pièce]'
-                                    : it.type === 'main_oeuvre'
-                                    ? '[M.O]'
-                                    : it.type === 'forfait'
-                                    ? '[Forfait]'
-                                    : ''}
-                                </span>
                               </td>
                               <td className="py-2 px-2 text-right border-r border-slate-200 font-mono text-slate-800 tabular-nums">
                                 {it.quantity.toLocaleString('fr-FR', {
@@ -970,30 +961,8 @@ export const DocumentViewerModal: React.FC = () => {
 
                   {/* SOUS-TOTAUX & MODE DE RÈGLEMENT */}
                   <div className="grid grid-cols-12 gap-4 items-start pt-1 avoid-break">
-                    {/* GAUCHE (Col 7) : Sous-totaux par nature + Mode de Règlement */}
+                    {/* GAUCHE (Col 7) : Mode de Règlement */}
                     <div className="col-span-7 space-y-3">
-                      {/* Sous-totaux par nature de travail */}
-                      <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-[10px] grid grid-cols-3 gap-2">
-                        <div>
-                          <span className="text-slate-500 block">Total Pièces HT :</span>
-                          <strong className="font-mono text-slate-800 text-[11px]">
-                            {partsSubtotalHT.toFixed(2)} €
-                          </strong>
-                        </div>
-                        <div>
-                          <span className="text-slate-500 block">Total Main d'œuvre HT :</span>
-                          <strong className="font-mono text-slate-800 text-[11px]">
-                            {laborSubtotalHT.toFixed(2)} €
-                          </strong>
-                        </div>
-                        <div>
-                          <span className="text-slate-500 block">Forfaits / Autre HT :</span>
-                          <strong className="font-mono text-slate-800 text-[11px]">
-                            {otherSubtotalHT.toFixed(2)} €
-                          </strong>
-                        </div>
-                      </div>
-
                       {/* Mode de règlement */}
                       <div className="p-3.5 rounded-lg bg-slate-50/90 border border-slate-300 text-xs space-y-2 shadow-2xs">
                         <div className="flex items-center justify-between">

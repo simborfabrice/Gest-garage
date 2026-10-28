@@ -675,15 +675,27 @@ export const ClientsTab: React.FC = () => {
               </div>
 
               {clientForm.type === 'professionnel' && (
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Raison sociale / Société</label>
-                  <input
-                    type="text"
-                    value={clientForm.companyName}
-                    onChange={(e) => setClientForm({ ...clientForm, companyName: e.target.value })}
-                    className="w-full border border-slate-300 rounded-lg p-2 text-xs"
-                    placeholder="ex: SARL Express Transports"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Raison sociale / Société</label>
+                    <input
+                      type="text"
+                      value={clientForm.companyName}
+                      onChange={(e) => setClientForm({ ...clientForm, companyName: e.target.value })}
+                      className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                      placeholder="ex: SARL Express Transports"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Numéro SIREN (9 chiffres)</label>
+                    <input
+                      type="text"
+                      value={clientForm.siren}
+                      onChange={(e) => setClientForm({ ...clientForm, siren: e.target.value })}
+                      className="w-full border border-slate-300 rounded-lg p-2 text-xs font-mono"
+                      placeholder="ex: 123 456 789"
+                    />
+                  </div>
                 </div>
               )}
 
