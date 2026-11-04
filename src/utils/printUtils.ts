@@ -72,7 +72,20 @@ export const downloadPrintableHtml = (
       background: #f1f5f9;
       margin: 0;
       padding: 20px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-feature-settings: "zero" 0 !important;
+    }
+    *, *::before, *::after {
+      font-feature-settings: "zero" 0 !important;
+    }
+    .font-mono {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+      font-variant-numeric: tabular-nums !important;
+      font-feature-settings: "zero" 0 !important;
+    }
+    .tabular-nums {
+      font-variant-numeric: tabular-nums !important;
+      font-feature-settings: "zero" 0 !important;
     }
     .print-bar {
       max-width: 210mm;

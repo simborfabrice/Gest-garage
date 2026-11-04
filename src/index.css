@@ -37,14 +37,42 @@
   background-image: radial-gradient(circle at 50% 0%, rgba(2, 132, 199, 0.08), transparent 70%);
 }
 
+@theme {
+  --font-mono: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Ensure all 0s are rendered without a slash/bar (zéro sans barre) across the whole app */
+*, *::before, *::after {
+  font-feature-settings: "zero" 0 !important;
+}
+
 body {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   color: var(--text-primary);
   background-color: var(--app-bg);
+  font-feature-settings: "zero" 0 !important;
 }
 
 .tabular-nums {
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums !important;
+  font-feature-settings: "zero" 0 !important;
+}
+
+/* Override monospace font to use clean, readable Plus Jakarta Sans with tabular alignment and unslashed 0 */
+.font-mono,
+code,
+kbd,
+samp,
+pre,
+input.font-mono,
+span.font-mono,
+td.font-mono,
+strong.font-mono,
+p.font-mono {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-variant-numeric: tabular-nums !important;
+  font-feature-settings: "zero" 0 !important;
+  letter-spacing: 0.01em;
 }
 
 .card-theme {
