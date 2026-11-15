@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { formatDate } from '../utils/dateUtils';
 import { printElement, downloadPrintableHtml } from '../utils/printUtils';
+import { roundCentimes } from '../services/storage';
 
 type ViewLayoutMode = 'official_standard' | 'official_compact' | 'workshop_card' | 'handover';
 
@@ -236,14 +237,16 @@ export const DocumentViewerModal: React.FC = () => {
   const vatBreakdown: { [rate: number]: { baseHT: number; amountTVA: number } } = {};
   if (doc) {
     doc.items.forEach((it) => {
-      const lineHT =
-        it.quantity * it.unitPriceHT * (1 - (it.discountPercent || 0) / 100);
-      const rate = it.tvaRate || 20;
+      const qty = roundCentimes(it.quantity || 0);
+      const unitHT = roundCentimes(it.unitPriceHT || 0);
+      const lineHT = roundCentimes(qty * unitHT * (1 - (it.discountPercent || 0) / 100));
+      const rate = it.tvaRate ?? 20;
+      const lineTVA = roundCentimes(lineHT * (rate / 100));
       if (!vatBreakdown[rate]) {
         vatBreakdown[rate] = { baseHT: 0, amountTVA: 0 };
       }
-      vatBreakdown[rate].baseHT += lineHT;
-      vatBreakdown[rate].amountTVA += lineHT * (rate / 100);
+      vatBreakdown[rate].baseHT = roundCentimes(vatBreakdown[rate].baseHT + lineHT);
+      vatBreakdown[rate].amountTVA = roundCentimes(vatBreakdown[rate].amountTVA + lineTVA);
     });
   }
 
@@ -253,8 +256,14 @@ export const DocumentViewerModal: React.FC = () => {
         .filter((it) => it.type === 'piece')
         .reduce(
           (sum, it) =>
-            sum +
-            it.quantity * it.unitPriceHT * (1 - (it.discountPercent || 0) / 100),
+            roundCentimes(
+              sum +
+                roundCentimes(
+                  roundCentimes(it.quantity || 0) *
+                    roundCentimes(it.unitPriceHT || 0) *
+                    (1 - (it.discountPercent || 0) / 100)
+                )
+            ),
           0
         )
     : 0;
@@ -264,8 +273,14 @@ export const DocumentViewerModal: React.FC = () => {
         .filter((it) => it.type === 'main_oeuvre')
         .reduce(
           (sum, it) =>
-            sum +
-            it.quantity * it.unitPriceHT * (1 - (it.discountPercent || 0) / 100),
+            roundCentimes(
+              sum +
+                roundCentimes(
+                  roundCentimes(it.quantity || 0) *
+                    roundCentimes(it.unitPriceHT || 0) *
+                    (1 - (it.discountPercent || 0) / 100)
+                )
+            ),
           0
         )
     : 0;
@@ -275,8 +290,14 @@ export const DocumentViewerModal: React.FC = () => {
         .filter((it) => it.type === 'forfait' || it.type === 'autre')
         .reduce(
           (sum, it) =>
-            sum +
-            it.quantity * it.unitPriceHT * (1 - (it.discountPercent || 0) / 100),
+            roundCentimes(
+              sum +
+                roundCentimes(
+                  roundCentimes(it.quantity || 0) *
+                    roundCentimes(it.unitPriceHT || 0) *
+                    (1 - (it.discountPercent || 0) / 100)
+                )
+            ),
           0
         )
     : 0;
@@ -713,6 +734,7 @@ export const DocumentViewerModal: React.FC = () => {
 
               {/* -------------------- 1. FORMAT DE FACTURATION TYPE OFFICIEL -------------------- */}
               {!isSupplierOrder && doc && layoutMode === 'official_standard' && (
+                <>
                 <div className="space-y-4">
                   {/* TOP HEADER: Émetteur (Garage) & Destinataire (Client) - Norme AFNOR */}
                   <div className="grid grid-cols-12 gap-6 items-start pb-4 border-b border-slate-300">
@@ -916,10 +938,13 @@ export const DocumentViewerModal: React.FC = () => {
                           </tr>
                         ) : (
                           doc.items.map((it, idx) => {
+                            const qty = roundCentimes(it.quantity || 0);
+                            const unitHT = roundCentimes(it.unitPriceHT || 0);
                             const discount = it.discountPercent || 0;
-                            const lineHT = it.quantity * it.unitPriceHT * (1 - discount / 100);
-                            const rate = it.tvaRate || 20;
-                            const lineTTC = lineHT * (1 + rate / 100);
+                            const lineHT = roundCentimes(qty * unitHT * (1 - discount / 100));
+                            const rate = it.tvaRate ?? 20;
+                            const lineTVA = roundCentimes(lineHT * (rate / 100));
+                            const lineTTC = roundCentimes(lineHT + lineTVA);
 
                             return (
                             <tr
@@ -933,12 +958,13 @@ export const DocumentViewerModal: React.FC = () => {
                                 <span>{it.description}</span>
                               </td>
                               <td className="py-2 px-2 text-right border-r border-slate-200 font-mono text-slate-800 tabular-nums">
-                                {it.quantity.toLocaleString('fr-FR', {
-                                  minimumFractionDigits: Number.isInteger(it.quantity) ? 0 : 2,
+                                {qty.toLocaleString('fr-FR', {
+                                  minimumFractionDigits: Number.isInteger(qty) ? 0 : 2,
+                                  maximumFractionDigits: 2,
                                 })}
                               </td>
                               <td className="py-2 px-2 text-right border-r border-slate-200 font-mono text-slate-700 tabular-nums">
-                                {it.unitPriceHT.toFixed(2)} €
+                                {unitHT.toFixed(2)} €
                               </td>
                               <td className="py-2 px-1.5 text-right border-r border-slate-200 font-mono text-slate-500 tabular-nums">
                                 {discount > 0 ? `${discount}%` : '—'}
@@ -947,7 +973,7 @@ export const DocumentViewerModal: React.FC = () => {
                                 {lineHT.toFixed(2)} €
                               </td>
                               <td className="py-2 px-1.5 text-right border-r border-slate-200 font-mono text-slate-600 tabular-nums text-[10.5px]">
-                                {rate.toFixed(1)}%
+                                {Number.isInteger(rate) ? `${rate}%` : `${rate.toFixed(2)}%`}
                               </td>
                               <td className="py-2 px-2.5 text-right font-mono font-bold text-slate-900 tabular-nums">
                                 {lineTTC.toFixed(2)} €
@@ -990,12 +1016,6 @@ export const DocumentViewerModal: React.FC = () => {
                             </select>
                           </div>
                         </div>
-                        {doc.notes && (
-                          <div className="pt-2 border-t border-slate-200 text-[10.5px] text-slate-600">
-                            <span className="font-semibold text-slate-700">Remarques atelier : </span>
-                            <span className="italic">{doc.notes}</span>
-                          </div>
-                        )}
                       </div>
                     </div>
 
@@ -1005,13 +1025,13 @@ export const DocumentViewerModal: React.FC = () => {
                         <div className="flex justify-between text-slate-700">
                           <span>TOTAL GÉNÉRAL HT :</span>
                           <span className="font-mono font-bold tabular-nums">
-                            {doc.totalHT.toFixed(2)} €
+                            {roundCentimes(doc.totalHT).toFixed(2)} €
                           </span>
                         </div>
                         <div className="flex justify-between text-slate-700">
-                          <span>TOTAL TVA (20.0%) :</span>
+                          <span>TOTAL TVA :</span>
                           <span className="font-mono tabular-nums">
-                            {doc.totalTVA.toFixed(2)} €
+                            {roundCentimes(doc.totalTVA).toFixed(2)} €
                           </span>
                         </div>
 
@@ -1022,7 +1042,7 @@ export const DocumentViewerModal: React.FC = () => {
                         >
                           <span>TOTAL TTC EN EUROS :</span>
                           <span className="font-mono text-base tabular-nums">
-                            {doc.totalTTC.toFixed(2)} €
+                            {roundCentimes(doc.totalTTC).toFixed(2)} €
                           </span>
                         </div>
 
@@ -1033,13 +1053,13 @@ export const DocumentViewerModal: React.FC = () => {
                               <div className="flex justify-between text-emerald-700 font-semibold text-[11px]">
                                 <span>Acompte déjà versé :</span>
                                 <span className="font-mono tabular-nums">
-                                  -{doc.amountPaid.toFixed(2)} €
+                                  -{roundCentimes(doc.amountPaid).toFixed(2)} €
                                 </span>
                               </div>
                               <div className="flex justify-between font-black text-slate-900 text-sm pt-1 border-t border-slate-300">
                                 <span>NET À PAYER :</span>
                                 <span className="font-mono text-base tabular-nums text-slate-950">
-                                  {Math.max(0, doc.totalTTC - doc.amountPaid).toFixed(2)} €
+                                  {roundCentimes(Math.max(0, doc.totalTTC - doc.amountPaid)).toFixed(2)} €
                                 </span>
                               </div>
                             </>
@@ -1047,7 +1067,7 @@ export const DocumentViewerModal: React.FC = () => {
                             <div className="flex justify-between font-black text-slate-900 text-sm">
                               <span>NET À PAYER :</span>
                               <span className="font-mono text-base tabular-nums">
-                                {doc.totalTTC.toFixed(2)} €
+                                {roundCentimes(doc.totalTTC).toFixed(2)} €
                               </span>
                             </div>
                           )}
@@ -1070,36 +1090,27 @@ export const DocumentViewerModal: React.FC = () => {
                       </div>
                     </div>
                   </div>
+                </div>
 
-                  {/* CADRES DE SIGNATURE ET BON POUR ACCORD TYPE */}
-                  <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-300 text-[10px] avoid-break">
-                    {/* Cadre Client */}
-                    <div className="p-2.5 border border-slate-300 rounded bg-slate-50/50 flex flex-col justify-between h-20">
-                      <p className="font-bold text-slate-800 uppercase text-[9px]">
-                        {isQuote
-                          ? 'Mention manuscrite « Bon pour accord et exécution des travaux » :'
-                          : isOrder
-                          ? 'Signature du Client valant bon de commande ferme :'
-                          : 'Pour le Client — Réception conforme & Visa :'}
-                      </p>
-                      <div className="flex justify-between text-slate-400 text-[9px] pt-2 border-t border-slate-200">
-                        <span>Date : ___________________</span>
-                        <span>Signature :</span>
-                      </div>
-                    </div>
-
-                    {/* Cadre Garage */}
-                    <div className="p-2.5 border border-slate-300 rounded bg-slate-50/50 flex flex-col justify-between h-20 text-right">
-                      <p className="font-bold text-slate-800 uppercase text-[9px]">
-                        Pour l'Établissement — Cachet Commercial & Signature :
-                      </p>
-                      <div className="flex justify-between text-slate-400 text-[9px] pt-2 border-t border-slate-200">
-                        <span>{garage.city}, le {new Date().toLocaleDateString('fr-FR')}</span>
-                        <span>{garage.name}</span>
-                      </div>
-                    </div>
+                {/* CASE REMARQUE EN BAS DE PAGE */}
+                <div className="pt-4 mt-4 border-t border-slate-300 avoid-break">
+                  <div className="p-3 border border-slate-300 rounded-lg bg-slate-50/50 min-h-[78px] flex flex-col">
+                    <span className="font-bold text-slate-800 uppercase tracking-wider text-[10px] block mb-1">
+                      Remarque
+                    </span>
+                    <textarea
+                      value={doc.notes || ''}
+                      onChange={(e) => updateDocument(doc.id, { notes: e.target.value })}
+                      placeholder="Saisir une remarque..."
+                      rows={2}
+                      className="no-print w-full bg-transparent text-[11px] text-slate-700 leading-relaxed resize-none focus:outline-hidden placeholder:text-slate-400 placeholder:italic"
+                    />
+                    <p className="hidden print:block text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed min-h-[34px]">
+                      {doc.notes || ''}
+                    </p>
                   </div>
                 </div>
+                </>
               )}
 
               {/* -------------------- 2. FICHE TECHNIQUE D'ATELIER (OR) -------------------- */}

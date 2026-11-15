@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Supplier, SupplierOrder, SupplierOrderItem } from '../../types';
 import { formatDate } from '../../utils/dateUtils';
+import { PriceInput } from '../PriceInput';
 
 export const SuppliersTab: React.FC = () => {
   const {
@@ -390,12 +391,9 @@ export const SuppliersTab: React.FC = () => {
                 <label className="font-semibold text-slate-700 block mb-1">
                   Prix d'Achat Fournisseur HT (€)
                 </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
+                <PriceInput
                   value={calcCostHT}
-                  onChange={(e) => setCalcCostHT(Number(e.target.value))}
+                  onChange={(val) => setCalcCostHT(val)}
                   className="w-full border border-slate-300 rounded-lg p-2.5 text-base font-bold text-slate-900 tabular-nums"
                 />
               </div>
@@ -449,7 +447,7 @@ export const SuppliersTab: React.FC = () => {
                   </div>
                   <div className="flex justify-between text-xs text-emerald-700 font-semibold mt-1">
                     <span>Taux de marge brute :</span>
-                    <span className="font-mono tabular-nums">{marginPercent.toFixed(1)}%</span>
+                    <span className="font-mono tabular-nums">{marginPercent.toFixed(2)}%</span>
                   </div>
                 </div>
               </div>
@@ -687,14 +685,12 @@ export const SuppliersTab: React.FC = () => {
                         className="w-14 border border-slate-300 rounded p-1.5 text-xs text-right tabular-nums"
                       />
                       <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          step="0.01"
-                          placeholder="P.U. HT"
+                        <PriceInput
+                          placeholder="0.00"
                           value={item.unitCostHT}
-                          onChange={(e) => {
+                          onChange={(val) => {
                             const updated = [...orderItems];
-                            updated[idx].unitCostHT = Number(e.target.value);
+                            updated[idx].unitCostHT = val;
                             setOrderItems(updated);
                           }}
                           className="w-20 border border-slate-300 rounded p-1.5 text-xs text-right tabular-nums font-mono"

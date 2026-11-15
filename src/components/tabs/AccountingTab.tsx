@@ -257,7 +257,7 @@ export const AccountingTab: React.FC = () => {
                 />
               </div>
               <span className="text-[10px] text-slate-400 mt-1 block">
-                {totalSalesHT > 0 ? ((totalLaborHT / totalSalesHT) * 100).toFixed(1) : 0}% du CA total
+                {totalSalesHT > 0 ? ((totalLaborHT / totalSalesHT) * 100).toFixed(2) : '0.00'}% du CA total
               </span>
             </div>
 
@@ -276,7 +276,7 @@ export const AccountingTab: React.FC = () => {
                 />
               </div>
               <span className="text-[10px] text-slate-400 mt-1 block">
-                {totalSalesHT > 0 ? ((totalPartsHT / totalSalesHT) * 100).toFixed(1) : 0}% du CA total
+                {totalSalesHT > 0 ? ((totalPartsHT / totalSalesHT) * 100).toFixed(2) : '0.00'}% du CA total
               </span>
             </div>
 

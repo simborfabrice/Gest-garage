@@ -16,8 +16,9 @@ import {
   Eye,
 } from 'lucide-react';
 import { CatalogItem, DocumentItem, DocumentStatus, DocumentType, GarageDocument, Vehicle, Client } from '../types';
-import { recalculateDocumentTotals } from '../services/storage';
+import { recalculateDocumentTotals, roundCentimes } from '../services/storage';
 import { CatalogShortcutsModal } from './CatalogShortcutsModal';
+import { PriceInput } from './PriceInput';
 
 export const DocumentEditorModal: React.FC = () => {
   const {
@@ -698,11 +699,9 @@ export const DocumentEditorModal: React.FC = () => {
                     <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                       Montant déjà réglé (€)
                     </label>
-                    <input
-                      type="number"
-                      step="0.01"
+                    <PriceInput
                       value={status === 'paye' ? liveTotals.totalTTC : amountPaid}
-                      onChange={(e) => setAmountPaid(Number(e.target.value))}
+                      onChange={(val) => setAmountPaid(val)}
                       disabled={status === 'paye'}
                       className="w-full border border-slate-300 rounded-lg p-2 text-xs tabular-nums bg-white font-mono font-bold"
                     />
@@ -772,7 +771,11 @@ export const DocumentEditorModal: React.FC = () => {
                 </div>
               ) : (
                 items.map((it, idx) => {
-                  const lineDiscounted = it.quantity * it.unitPriceHT * (1 - (it.discountPercent || 0) / 100);
+                  const lineDiscounted = roundCentimes(
+                    roundCentimes(it.quantity) * roundCentimes(it.unitPriceHT) * (1 - (it.discountPercent || 0) / 100)
+                  );
+                  const lineTVA = roundCentimes(lineDiscounted * ((it.tvaRate ?? 20) / 100));
+                  const lineTTC = roundCentimes(lineDiscounted + lineTVA);
 
                   return (
                   <div
@@ -818,12 +821,12 @@ export const DocumentEditorModal: React.FC = () => {
                           <span className="text-[11px] text-slate-500 font-medium">Qté :</span>
                           <input
                             type="number"
-                            min="0.1"
-                            step="0.1"
+                            min="0.01"
+                            step="0.01"
                             value={it.quantity}
                             onChange={(e) => {
                               const updated = [...items];
-                              updated[idx].quantity = Number(e.target.value);
+                              updated[idx].quantity = roundCentimes(Number(e.target.value));
                               setItems(updated);
                             }}
                             className="w-16 border border-slate-300 rounded-lg p-1 text-xs text-right tabular-nums bg-white font-mono"
@@ -832,13 +835,11 @@ export const DocumentEditorModal: React.FC = () => {
 
                         <div className="flex items-center gap-1">
                           <span className="text-[11px] text-slate-500 font-semibold">P.U. HT :</span>
-                          <input
-                            type="number"
-                            step="0.01"
+                          <PriceInput
                             value={it.unitPriceHT}
-                            onChange={(e) => {
+                            onChange={(val) => {
                               const updated = [...items];
-                              updated[idx].unitPriceHT = Number(e.target.value);
+                              updated[idx].unitPriceHT = val;
                               setItems(updated);
                             }}
                             className="w-24 border border-slate-300 rounded-lg p-1 text-xs text-right tabular-nums font-mono font-bold text-slate-900 bg-white"
@@ -848,18 +849,16 @@ export const DocumentEditorModal: React.FC = () => {
 
                         <div className="flex items-center gap-1">
                           <span className="text-[11px] text-sky-800 font-semibold">P.U. TTC :</span>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={it.unitPriceHT ? Number((it.unitPriceHT * (1 + (it.tvaRate || 20) / 100)).toFixed(2)) : ''}
-                            onChange={(e) => {
-                              const ttc = Number(e.target.value);
-                              const rate = it.tvaRate || 20;
-                              const ht = ttc / (1 + rate / 100);
+                          <PriceInput
+                            value={roundCentimes(it.unitPriceHT * (1 + (it.tvaRate ?? 20) / 100))}
+                            onChange={(ttc) => {
+                              const rate = it.tvaRate ?? 20;
+                              const ht = roundCentimes(ttc / (1 + rate / 100));
                               const updated = [...items];
-                              updated[idx].unitPriceHT = Number(ht.toFixed(2));
+                              updated[idx].unitPriceHT = ht;
                               setItems(updated);
                             }}
+                            allowEmptyZero
                             placeholder="0.00"
                             className="w-24 border border-sky-300 rounded-lg p-1 text-xs text-right tabular-nums font-mono font-bold text-sky-950 bg-sky-50/60"
                           />
@@ -907,7 +906,7 @@ export const DocumentEditorModal: React.FC = () => {
                             Total : <strong className="text-slate-900">{lineDiscounted.toFixed(2)} € HT</strong>
                           </span>
                           <span className="text-sky-900 font-bold bg-sky-50 px-1 py-0.5 rounded border border-sky-200">
-                            {(lineDiscounted * (1 + (it.tvaRate || 20) / 100)).toFixed(2)} € TTC
+                            {lineTTC.toFixed(2)} € TTC
                           </span>
                         </div>
                       </div>
@@ -933,7 +932,7 @@ export const DocumentEditorModal: React.FC = () => {
           {/* Section 3: Notes & Remarks */}
           <div>
             <label className="block text-[11px] font-bold text-slate-700 mb-1">
-              Remarques, Mentions & Consignes particulières
+              Remarque (affichée en bas du document)
             </label>
             <textarea
               rows={2}

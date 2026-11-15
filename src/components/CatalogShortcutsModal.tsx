@@ -14,6 +14,8 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { CatalogItem } from '../types';
+import { PriceInput } from './PriceInput';
+import { roundCentimes } from '../services/storage';
 
 interface CatalogShortcutsModalProps {
   isOpen: boolean;
@@ -247,10 +249,10 @@ export const CatalogShortcutsModal: React.FC<CatalogShortcutsModalProps> = ({
                   <label className="font-semibold text-slate-700 block mb-1">Quantité par défaut</label>
                   <input
                     type="number"
-                    min="0.1"
-                    step="0.1"
+                    min="0.01"
+                    step="0.01"
                     value={formData.defaultQuantity}
-                    onChange={(e) => setFormData({ ...formData, defaultQuantity: Number(e.target.value) })}
+                    onChange={(e) => setFormData({ ...formData, defaultQuantity: roundCentimes(Number(e.target.value)) })}
                     className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white tabular-nums"
                   />
                 </div>
@@ -271,13 +273,10 @@ export const CatalogShortcutsModal: React.FC<CatalogShortcutsModalProps> = ({
 
                 <div>
                   <label className="font-semibold text-slate-700 block mb-1">Prix Unitaire HT (€) *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
+                  <PriceInput
                     required
                     value={formData.unitPriceHT}
-                    onChange={(e) => setFormData({ ...formData, unitPriceHT: Number(e.target.value) })}
+                    onChange={(val) => setFormData({ ...formData, unitPriceHT: val })}
                     className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white font-bold text-slate-900 tabular-nums"
                   />
                 </div>
@@ -299,7 +298,7 @@ export const CatalogShortcutsModal: React.FC<CatalogShortcutsModalProps> = ({
 
               <div className="flex items-center justify-between pt-3 border-t border-slate-200">
                 <span className="text-slate-500 text-[11px]">
-                  Prix TTC calculé : <strong className="text-slate-900 font-mono">{(formData.unitPriceHT * (1 + formData.tvaRate / 100)).toFixed(2)} € TTC</strong>
+                  Prix TTC calculé : <strong className="text-slate-900 font-mono">{roundCentimes(formData.unitPriceHT * (1 + formData.tvaRate / 100)).toFixed(2)} € TTC</strong>
                 </span>
 
                 <div className="flex items-center gap-2">

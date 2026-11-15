@@ -1237,6 +1237,12 @@ export const storageService = {
   },
 };
 
+// Centime rounding helper (strictly 2 digits after decimal point)
+export function roundCentimes(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
 // Document calculation helper
 export function recalculateDocumentTotals(
   items: GarageDocument['items']
@@ -1253,27 +1259,31 @@ export function recalculateDocumentTotals(
   let totalTVA = 0;
 
   for (const item of items) {
-    const rawLine = item.quantity * item.unitPriceHT;
-    const discountedLine = rawLine * (1 - (item.discountPercent || 0) / 100);
-    const lineTVA = discountedLine * ((item.tvaRate || 20) / 100);
+    const qty = roundCentimes(item.quantity || 0);
+    const unitHT = roundCentimes(item.unitPriceHT || 0);
+    const discount = item.discountPercent || 0;
+    const rate = item.tvaRate ?? 20;
 
-    totalHT += discountedLine;
-    totalTVA += lineTVA;
+    const lineHT = roundCentimes(qty * unitHT * (1 - discount / 100));
+    const lineTVA = roundCentimes(lineHT * (rate / 100));
+
+    totalHT = roundCentimes(totalHT + lineHT);
+    totalTVA = roundCentimes(totalTVA + lineTVA);
 
     if (item.type === 'piece') {
-      totalPartsHT += discountedLine;
+      totalPartsHT = roundCentimes(totalPartsHT + lineHT);
     } else if (item.type === 'main_oeuvre') {
-      totalLaborHT += discountedLine;
+      totalLaborHT = roundCentimes(totalLaborHT + lineHT);
     }
   }
 
-  const totalTTC = totalHT + totalTVA;
+  const totalTTC = roundCentimes(totalHT + totalTVA);
 
   return {
-    totalPartsHT: Math.round(totalPartsHT * 100) / 100,
-    totalLaborHT: Math.round(totalLaborHT * 100) / 100,
-    totalHT: Math.round(totalHT * 100) / 100,
-    totalTVA: Math.round(totalTVA * 100) / 100,
-    totalTTC: Math.round(totalTTC * 100) / 100,
+    totalPartsHT,
+    totalLaborHT,
+    totalHT,
+    totalTVA,
+    totalTTC,
   };
 }

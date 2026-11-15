@@ -35,6 +35,7 @@ import {
 import { CashTransaction, CashDayClose } from '../../types';
 import { formatDate, formatDateLong, formatDateTime, formatDateFull } from '../../utils/dateUtils';
 import { printElement, downloadPrintableHtml } from '../../utils/printUtils';
+import { PriceInput } from '../PriceInput';
 
 export const CashRegisterTab: React.FC = () => {
   const {
@@ -1335,13 +1336,11 @@ export const CashRegisterTab: React.FC = () => {
                 <label className="font-semibold text-slate-700 block mb-1">
                   Montant à encaisser (€ TTC) *
                 </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
+                <PriceInput
+                  min={0.01}
                   required
                   value={checkoutAmount}
-                  onChange={(e) => setCheckoutAmount(Number(e.target.value))}
+                  onChange={(val) => setCheckoutAmount(val)}
                   className="w-full border border-slate-300 rounded-lg p-2.5 text-base font-bold text-slate-900 tabular-nums"
                 />
               </div>
@@ -1376,12 +1375,10 @@ export const CashRegisterTab: React.FC = () => {
                 <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-emerald-950">Espèces reçues du client (€) :</span>
-                    <input
-                      type="number"
-                      step="0.01"
+                    <PriceInput
                       min={checkoutAmount}
                       value={cashGiven}
-                      onChange={(e) => setCashGiven(Number(e.target.value))}
+                      onChange={(val) => setCashGiven(val)}
                       className="w-24 border border-emerald-300 rounded p-1 text-right font-bold text-emerald-950 bg-white tabular-nums"
                     />
                   </div>
@@ -1458,13 +1455,11 @@ export const CashRegisterTab: React.FC = () => {
 
               <div>
                 <label className="font-semibold text-slate-700 block mb-1">Montant (€) *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
+                <PriceInput
+                  min={0.01}
                   required
                   value={movementAmount}
-                  onChange={(e) => setMovementAmount(Number(e.target.value))}
+                  onChange={(val) => setMovementAmount(val)}
                   className="w-full border border-slate-300 rounded-lg p-2 text-sm font-bold text-slate-900 tabular-nums"
                 />
               </div>
@@ -1539,12 +1534,10 @@ export const CashRegisterTab: React.FC = () => {
                 <label className="font-semibold text-slate-700 block mb-1">
                   Espèces réellement comptées dans le tiroir (€) *
                 </label>
-                <input
-                  type="number"
-                  step="0.01"
+                <PriceInput
                   required
                   value={actualCashCounted}
-                  onChange={(e) => setActualCashCounted(Number(e.target.value))}
+                  onChange={(val) => setActualCashCounted(val)}
                   className="w-full border border-slate-300 rounded-lg p-2.5 text-base font-black text-slate-900 tabular-nums"
                 />
               </div>
@@ -1828,13 +1821,11 @@ export const CashRegisterTab: React.FC = () => {
 
                 <div className="flex items-center gap-2">
                   <div className="relative flex-1">
-                    <input
-                      type="number"
-                      min="0"
-                      step="5"
+                    <PriceInput
+                      min={0}
                       required
                       value={settingsOpeningBalance}
-                      onChange={(e) => setSettingsOpeningBalance(Number(e.target.value))}
+                      onChange={(val) => setSettingsOpeningBalance(val)}
                       className="w-full pl-3 pr-8 py-2 text-base font-black text-slate-900 border border-slate-300 rounded-lg tabular-nums bg-white"
                     />
                     <span className="absolute right-3 top-2.5 font-bold text-slate-400">€</span>

@@ -122,13 +122,16 @@ export const downloadPrintableHtml = (
       box-sizing: border-box;
       box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
       border-radius: 2px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
     @media print {
       body {
         background: white !important;
         padding: 0 !important;
       }
-      .print-bar {
+      .print-bar, .no-print {
         display: none !important;
       }
       .a4-paper {
@@ -136,6 +139,7 @@ export const downloadPrintableHtml = (
         margin: 0 !important;
         padding: 0 !important;
         max-width: 100% !important;
+        min-height: 277mm !important;
       }
     }
   </style>

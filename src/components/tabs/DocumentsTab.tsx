@@ -25,7 +25,9 @@ import {
 } from 'lucide-react';
 import { CatalogItem, DocumentItem, DocumentType, GarageDocument, Vehicle, Client } from '../../types';
 import { CatalogShortcutsModal } from '../CatalogShortcutsModal';
+import { PriceInput } from '../PriceInput';
 import { formatDate } from '../../utils/dateUtils';
+import { recalculateDocumentTotals, roundCentimes } from '../../services/storage';
 
 export const DocumentsTab: React.FC = () => {
   const {
@@ -1219,12 +1221,12 @@ export const DocumentsTab: React.FC = () => {
                               <span className="text-[11px] text-slate-500">Qté :</span>
                               <input
                                 type="number"
-                                min="0.1"
-                                step="0.1"
+                                min="0.01"
+                                step="0.01"
                                 value={it.quantity}
                                 onChange={(e) => {
                                   const updated = [...items];
-                                  updated[idx].quantity = Number(e.target.value);
+                                  updated[idx].quantity = roundCentimes(Number(e.target.value));
                                   setItems(updated);
                                 }}
                                 className="w-14 border border-slate-300 rounded p-1 text-xs text-right tabular-nums bg-white"
@@ -1233,13 +1235,11 @@ export const DocumentsTab: React.FC = () => {
 
                             <div className="flex items-center gap-1">
                               <span className="text-[11px] text-slate-500 font-semibold">P.U. HT :</span>
-                              <input
-                                type="number"
-                                step="0.01"
+                              <PriceInput
                                 value={it.unitPriceHT}
-                                onChange={(e) => {
+                                onChange={(val) => {
                                   const updated = [...items];
-                                  updated[idx].unitPriceHT = Number(e.target.value);
+                                  updated[idx].unitPriceHT = val;
                                   setItems(updated);
                                 }}
                                 className="w-20 border border-slate-300 rounded p-1 text-xs text-right tabular-nums font-mono font-bold text-slate-900 bg-white"
@@ -1249,18 +1249,16 @@ export const DocumentsTab: React.FC = () => {
 
                             <div className="flex items-center gap-1">
                               <span className="text-[11px] text-sky-800 font-semibold">P.U. TTC :</span>
-                              <input
-                                type="number"
-                                step="0.01"
-                                value={it.unitPriceHT ? Number((it.unitPriceHT * (1 + (it.tvaRate || 20) / 100)).toFixed(2)) : ''}
-                                onChange={(e) => {
-                                  const ttc = Number(e.target.value);
-                                  const rate = it.tvaRate || 20;
-                                  const ht = ttc / (1 + rate / 100);
+                              <PriceInput
+                                value={roundCentimes(it.unitPriceHT * (1 + (it.tvaRate ?? 20) / 100))}
+                                onChange={(ttc) => {
+                                  const rate = it.tvaRate ?? 20;
+                                  const ht = roundCentimes(ttc / (1 + rate / 100));
                                   const updated = [...items];
-                                  updated[idx].unitPriceHT = Number(ht.toFixed(2));
+                                  updated[idx].unitPriceHT = ht;
                                   setItems(updated);
                                 }}
+                                allowEmptyZero
                                 placeholder="0.00"
                                 className="w-20 border border-sky-300 rounded p-1 text-xs text-right tabular-nums font-mono font-bold text-sky-950 bg-sky-50/60"
                               />
@@ -1286,12 +1284,21 @@ export const DocumentsTab: React.FC = () => {
                             </div>
 
                             <div className="flex items-center gap-2 pl-2 text-[11px] font-mono">
-                              <span className="text-slate-600">
-                                Total HT : <strong className="text-slate-900">{(it.quantity * it.unitPriceHT).toFixed(2)} €</strong>
-                              </span>
-                              <span className="text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded font-bold">
-                                Total TTC : {((it.quantity * it.unitPriceHT) * (1 + (it.tvaRate || 20) / 100)).toFixed(2)} €
-                              </span>
+                              {(() => {
+                                const lineHT = roundCentimes(roundCentimes(it.quantity) * roundCentimes(it.unitPriceHT));
+                                const lineTVA = roundCentimes(lineHT * ((it.tvaRate ?? 20) / 100));
+                                const lineTTC = roundCentimes(lineHT + lineTVA);
+                                return (
+                                  <>
+                                    <span className="text-slate-600">
+                                      Total HT : <strong className="text-slate-900">{lineHT.toFixed(2)} €</strong>
+                                    </span>
+                                    <span className="text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded font-bold">
+                                      Total TTC : {lineTTC.toFixed(2)} €
+                                    </span>
+                                  </>
+                                );
+                              })()}
                             </div>
                           </div>
 
@@ -1312,37 +1319,40 @@ export const DocumentsTab: React.FC = () => {
                   )}
                 </div>
 
-                {items.length > 0 && (
-                  <div className="p-3 bg-slate-100 rounded-lg border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
-                    <span className="text-slate-600 font-medium">
-                      Récapitulatif document ({items.length} ligne{items.length > 1 ? 's' : ''})
-                    </span>
-                    <div className="flex flex-wrap items-center gap-4 font-mono">
-                      <div>
-                        <span className="text-slate-500 text-[11px]">Total HT : </span>
-                        <strong className="text-slate-900 text-xs">
-                          {items.reduce((s, it) => s + it.quantity * it.unitPriceHT, 0).toFixed(2)} €
-                        </strong>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 text-[11px]">TVA : </span>
-                        <span className="text-slate-700 text-xs">
-                          {items.reduce((s, it) => s + (it.quantity * it.unitPriceHT * ((it.tvaRate || 20) / 100)), 0).toFixed(2)} €
-                        </span>
-                      </div>
-                      <div className="px-2.5 py-1 bg-white rounded border border-slate-300 shadow-2xs">
-                        <span className="text-slate-700 text-[11px] font-bold">TOTAL TTC : </span>
-                        <strong className="text-emerald-700 text-sm font-black">
-                          {items.reduce((s, it) => s + (it.quantity * it.unitPriceHT * (1 + (it.tvaRate || 20) / 100)), 0).toFixed(2)} €
-                        </strong>
+                {items.length > 0 && (() => {
+                  const summaryTotals = recalculateDocumentTotals(items as any);
+                  return (
+                    <div className="p-3 bg-slate-100 rounded-lg border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+                      <span className="text-slate-600 font-medium">
+                        Récapitulatif document ({items.length} ligne{items.length > 1 ? 's' : ''})
+                      </span>
+                      <div className="flex flex-wrap items-center gap-4 font-mono">
+                        <div>
+                          <span className="text-slate-500 text-[11px]">Total HT : </span>
+                          <strong className="text-slate-900 text-xs">
+                            {summaryTotals.totalHT.toFixed(2)} €
+                          </strong>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 text-[11px]">TVA : </span>
+                          <span className="text-slate-700 text-xs">
+                            {summaryTotals.totalTVA.toFixed(2)} €
+                          </span>
+                        </div>
+                        <div className="px-2.5 py-1 bg-white rounded border border-slate-300 shadow-2xs">
+                          <span className="text-slate-700 text-[11px] font-bold">TOTAL TTC : </span>
+                          <strong className="text-emerald-700 text-sm font-black">
+                            {summaryTotals.totalTTC.toFixed(2)} €
+                          </strong>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
 
               <div>
-                <label className="font-semibold text-slate-700 block mb-1">Remarques & Mentions atelier</label>
+                <label className="font-semibold text-slate-700 block mb-1">Remarque (affichée en bas du document)</label>
                 <textarea
                   rows={2}
                   value={newNotes}
