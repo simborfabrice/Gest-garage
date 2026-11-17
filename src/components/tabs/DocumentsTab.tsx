@@ -27,7 +27,7 @@ import { CatalogItem, DocumentItem, DocumentType, GarageDocument, Vehicle, Clien
 import { CatalogShortcutsModal } from '../CatalogShortcutsModal';
 import { PriceInput } from '../PriceInput';
 import { formatDate } from '../../utils/dateUtils';
-import { recalculateDocumentTotals, roundCentimes } from '../../services/storage';
+import { recalculateDocumentTotals, roundCentimes, formatDecimal2 } from '../../services/storage';
 
 export const DocumentsTab: React.FC = () => {
   const {
@@ -63,6 +63,7 @@ export const DocumentsTab: React.FC = () => {
   const [newDocType, setNewDocType] = useState<DocumentType>('devis');
   const [newClientId, setNewClientId] = useState(clients[0]?.id || '');
   const [newVehicleId, setNewVehicleId] = useState(vehicles[0]?.id || '');
+  const [clientNameSearch, setClientNameSearch] = useState('');
 
   // Direct client and vehicle entry modes
   const [clientInputMode, setClientInputMode] = useState<'select' | 'direct'>('select');
@@ -120,6 +121,18 @@ export const DocumentsTab: React.FC = () => {
     }
   }, [newClientId, currentSelectedClient?.siren]);
 
+  const normalizeClientName = (val: string) =>
+    val.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+  const normalizedClientNameQuery = normalizeClientName(clientNameSearch);
+  const filteredClientsByName = normalizedClientNameQuery
+    ? clients.filter((c) => {
+        const lastName = normalizeClientName(c.lastName || '');
+        const companyName = c.type === 'professionnel' ? normalizeClientName(c.companyName || '') : '';
+        return lastName.includes(normalizedClientNameQuery) || companyName.includes(normalizedClientNameQuery);
+      })
+    : clients;
+
   const clientVehicles = vehicles.filter((v) => v.clientId === newClientId);
 
   const filteredDocuments = documents.filter((doc) => {
@@ -169,7 +182,7 @@ export const DocumentsTab: React.FC = () => {
         tvaRate: item.tvaRate,
       },
     ]);
-    setCatalogNotification(`Ajouté au document : « ${item.description} » (${item.unitPriceHT.toFixed(2)} € HT)`);
+    setCatalogNotification(`Ajouté au document : « ${item.description} » (${formatDecimal2(item.unitPriceHT)} € HT)`);
     setTimeout(() => setCatalogNotification(null), 3500);
   };
 
@@ -347,6 +360,7 @@ export const DocumentsTab: React.FC = () => {
               setNewDocType('devis');
               setItems([]);
               setDirectClientSiren('');
+              setClientNameSearch('');
               setIsCreateModalOpen(true);
             }}
             className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white rounded-lg transition-opacity hover:opacity-95 shadow-xs"
@@ -397,7 +411,7 @@ export const DocumentsTab: React.FC = () => {
                       : 'N/A';
                     return (
                       <option key={d.id} value={d.id}>
-                        Devis {d.referenceNumber} — {clName} ({d.totalTTC.toFixed(2)} €)
+                        Devis {d.referenceNumber} — {clName} ({formatDecimal2(d.totalTTC)} €)
                       </option>
                     );
                   })}
@@ -414,7 +428,7 @@ export const DocumentsTab: React.FC = () => {
                       : 'N/A';
                     return (
                       <option key={d.id} value={d.id}>
-                        Bon de Cde {d.referenceNumber} — {clName} ({d.totalTTC.toFixed(2)} €)
+                        Bon de Cde {d.referenceNumber} — {clName} ({formatDecimal2(d.totalTTC)} €)
                       </option>
                     );
                   })}
@@ -431,7 +445,7 @@ export const DocumentsTab: React.FC = () => {
                       : 'N/A';
                     return (
                       <option key={d.id} value={d.id}>
-                        Facture {d.referenceNumber} — {clName} ({d.totalTTC.toFixed(2)} €)
+                        Facture {d.referenceNumber} — {clName} ({formatDecimal2(d.totalTTC)} €)
                       </option>
                     );
                   })}
@@ -624,11 +638,11 @@ export const DocumentsTab: React.FC = () => {
                       </td>
 
                       <td className="py-3.5 px-4 text-right font-mono text-slate-700 tabular-nums">
-                        {doc.totalHT.toFixed(2)} €
+                        {formatDecimal2(doc.totalHT)} €
                       </td>
 
                       <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900 tabular-nums text-sm">
-                        {doc.totalTTC.toFixed(2)} €
+                        {formatDecimal2(doc.totalTTC)} €
                       </td>
 
                       <td className="py-3.5 px-4">
@@ -814,23 +828,83 @@ export const DocumentsTab: React.FC = () => {
                 </div>
 
                 {clientInputMode === 'select' ? (
-                  <div>
-                    <label className="font-semibold text-slate-700 block mb-1">Sélectionner un client existant</label>
-                    <select
-                      value={newClientId}
-                      onChange={(e) => {
-                        setNewClientId(e.target.value);
-                        const fv = vehicles.find((v) => v.clientId === e.target.value);
-                        if (fv) setNewVehicleId(fv.id);
-                      }}
-                      className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
-                    >
-                      {clients.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.type === 'professionnel' ? `${c.companyName || c.lastName} (${c.firstName} ${c.lastName})` : `${c.firstName} ${c.lastName}`} {c.phone ? `— ${c.phone}` : ''}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="space-y-2.5">
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">
+                        Rechercher client par nom
+                      </label>
+                      <div className="relative">
+                        <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
+                        <input
+                          type="text"
+                          value={clientNameSearch}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setClientNameSearch(val);
+                            const q = normalizeClientName(val);
+                            if (q) {
+                              const matches = clients.filter((c) => {
+                                const lastName = normalizeClientName(c.lastName || '');
+                                const companyName = c.type === 'professionnel' ? normalizeClientName(c.companyName || '') : '';
+                                return lastName.includes(q) || companyName.includes(q);
+                              });
+                              if (matches.length > 0 && !matches.some((m) => m.id === newClientId)) {
+                                const firstMatch = matches[0];
+                                setNewClientId(firstMatch.id);
+                                const fv = vehicles.find((v) => v.clientId === firstMatch.id);
+                                setNewVehicleId(fv ? fv.id : '');
+                              }
+                            }
+                          }}
+                          placeholder="Taper uniquement le nom du client..."
+                          className="w-full pl-8 pr-7 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-hidden focus:border-sky-500"
+                        />
+                        {clientNameSearch && (
+                          <button
+                            type="button"
+                            onClick={() => setClientNameSearch('')}
+                            className="absolute right-2 top-2 text-slate-400 hover:text-slate-600"
+                            title="Effacer la recherche"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">
+                        Sélectionner un client existant{' '}
+                        {clientNameSearch.trim() && (
+                          <span className="text-[10px] font-medium text-sky-700">
+                            ({filteredClientsByName.length} trouvé{filteredClientsByName.length > 1 ? 's' : ''})
+                          </span>
+                        )}
+                      </label>
+                      <select
+                        value={
+                          filteredClientsByName.some((c) => c.id === newClientId)
+                            ? newClientId
+                            : ''
+                        }
+                        onChange={(e) => {
+                          setNewClientId(e.target.value);
+                          const fv = vehicles.find((v) => v.clientId === e.target.value);
+                          if (fv) setNewVehicleId(fv.id);
+                        }}
+                        className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                      >
+                        {filteredClientsByName.length === 0 ? (
+                          <option value="">Aucun client trouvé pour ce nom</option>
+                        ) : (
+                          filteredClientsByName.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.type === 'professionnel' ? `${c.companyName || c.lastName} (${c.firstName} ${c.lastName})` : `${c.firstName} ${c.lastName}`} {c.phone ? `— ${c.phone}` : ''}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                    </div>
 
                     {currentSelectedClient?.type === 'professionnel' && (
                       <div className="mt-2.5 p-2.5 bg-sky-50/80 border border-sky-200 rounded-lg">
@@ -1219,17 +1293,15 @@ export const DocumentsTab: React.FC = () => {
                           <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1">
                               <span className="text-[11px] text-slate-500">Qté :</span>
-                              <input
-                                type="number"
-                                min="0.01"
-                                step="0.01"
+                              <PriceInput
+                                min={0.01}
                                 value={it.quantity}
-                                onChange={(e) => {
+                                onChange={(val) => {
                                   const updated = [...items];
-                                  updated[idx].quantity = roundCentimes(Number(e.target.value));
+                                  updated[idx].quantity = val;
                                   setItems(updated);
                                 }}
-                                className="w-14 border border-slate-300 rounded p-1 text-xs text-right tabular-nums bg-white"
+                                className="w-16 border border-slate-300 rounded p-1 text-xs text-right tabular-nums bg-white font-mono"
                               />
                             </div>
 
@@ -1274,12 +1346,12 @@ export const DocumentsTab: React.FC = () => {
                                   updated[idx].tvaRate = Number(e.target.value);
                                   setItems(updated);
                                 }}
-                                className="w-16 border border-slate-300 rounded p-1 text-xs bg-white"
+                                className="w-20 border border-slate-300 rounded p-1 text-xs bg-white font-mono"
                               >
-                                <option value={20}>20%</option>
-                                <option value={10}>10%</option>
-                                <option value={5.5}>5.5%</option>
-                                <option value={0}>0%</option>
+                                <option value={20}>20.00%</option>
+                                <option value={10}>10.00%</option>
+                                <option value={5.5}>5.50%</option>
+                                <option value={0}>0.00%</option>
                               </select>
                             </div>
 
@@ -1291,10 +1363,10 @@ export const DocumentsTab: React.FC = () => {
                                 return (
                                   <>
                                     <span className="text-slate-600">
-                                      Total HT : <strong className="text-slate-900">{lineHT.toFixed(2)} €</strong>
+                                      Total HT : <strong className="text-slate-900">{formatDecimal2(lineHT)} €</strong>
                                     </span>
                                     <span className="text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded font-bold">
-                                      Total TTC : {lineTTC.toFixed(2)} €
+                                      Total TTC : {formatDecimal2(lineTTC)} €
                                     </span>
                                   </>
                                 );
@@ -1330,19 +1402,19 @@ export const DocumentsTab: React.FC = () => {
                         <div>
                           <span className="text-slate-500 text-[11px]">Total HT : </span>
                           <strong className="text-slate-900 text-xs">
-                            {summaryTotals.totalHT.toFixed(2)} €
+                            {formatDecimal2(summaryTotals.totalHT)} €
                           </strong>
                         </div>
                         <div>
                           <span className="text-slate-500 text-[11px]">TVA : </span>
                           <span className="text-slate-700 text-xs">
-                            {summaryTotals.totalTVA.toFixed(2)} €
+                            {formatDecimal2(summaryTotals.totalTVA)} €
                           </span>
                         </div>
                         <div className="px-2.5 py-1 bg-white rounded border border-slate-300 shadow-2xs">
                           <span className="text-slate-700 text-[11px] font-bold">TOTAL TTC : </span>
                           <strong className="text-emerald-700 text-sm font-black">
-                            {summaryTotals.totalTTC.toFixed(2)} €
+                            {formatDecimal2(summaryTotals.totalTTC)} €
                           </strong>
                         </div>
                       </div>
@@ -1352,7 +1424,7 @@ export const DocumentsTab: React.FC = () => {
               </div>
 
               <div>
-                <label className="font-semibold text-slate-700 block mb-1">Remarque (affichée en bas du document)</label>
+                <label className="font-semibold text-slate-700 block mb-1">Remarque (affichée sous le mode de règlement sur les factures)</label>
                 <textarea
                   rows={2}
                   value={newNotes}

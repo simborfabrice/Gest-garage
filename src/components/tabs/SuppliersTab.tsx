@@ -19,6 +19,7 @@ import {
 import { Supplier, SupplierOrder, SupplierOrderItem } from '../../types';
 import { formatDate } from '../../utils/dateUtils';
 import { PriceInput } from '../PriceInput';
+import { roundCentimes, formatDecimal2 } from '../../services/storage';
 
 export const SuppliersTab: React.FC = () => {
   const {
@@ -68,10 +69,10 @@ export const SuppliersTab: React.FC = () => {
   // Margin Calculator State
   const [calcCostHT, setCalcCostHT] = useState(50);
   const [calcCoefficient, setCalcCoefficient] = useState(1.75); // Standard garage coefficient: 1.6 to 2.0
-  const suggestedSaleHT = calcCostHT * calcCoefficient;
-  const suggestedMarginHT = suggestedSaleHT - calcCostHT;
-  const marginPercent = suggestedSaleHT > 0 ? (suggestedMarginHT / suggestedSaleHT) * 100 : 0;
-  const suggestedSaleTTC = suggestedSaleHT * 1.2;
+  const suggestedSaleHT = roundCentimes(calcCostHT * calcCoefficient);
+  const suggestedMarginHT = roundCentimes(suggestedSaleHT - calcCostHT);
+  const marginPercent = suggestedSaleHT > 0 ? roundCentimes((suggestedMarginHT / suggestedSaleHT) * 100) : 0;
+  const suggestedSaleTTC = roundCentimes(suggestedSaleHT * 1.2);
 
   const handleSaveSupplier = (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,17 +98,21 @@ export const SuppliersTab: React.FC = () => {
     let totalTVA = 0;
 
     const formattedItems: SupplierOrderItem[] = orderItems.map((item, idx) => {
-      const lineHT = item.quantity * item.unitCostHT;
-      const lineTVA = lineHT * (item.tvaRate / 100);
-      totalHT += lineHT;
-      totalTVA += lineTVA;
+      const qty = roundCentimes(item.quantity);
+      const unitCostHT = roundCentimes(item.unitCostHT);
+      const lineHT = roundCentimes(qty * unitCostHT);
+      const lineTVA = roundCentimes(lineHT * (item.tvaRate / 100));
+      totalHT = roundCentimes(totalHT + lineHT);
+      totalTVA = roundCentimes(totalTVA + lineTVA);
       return {
         ...item,
+        quantity: qty,
+        unitCostHT,
         id: `soi-${Date.now()}-${idx}`,
       };
     });
 
-    const totalTTC = totalHT + totalTVA;
+    const totalTTC = roundCentimes(totalHT + totalTVA);
 
     addSupplierOrder({
       supplierId: orderSupplierId,
@@ -115,9 +120,9 @@ export const SuppliersTab: React.FC = () => {
       orderDate,
       status: 'recu',
       items: formattedItems,
-      totalHT: Math.round(totalHT * 100) / 100,
-      totalTVA: Math.round(totalTVA * 100) / 100,
-      totalTTC: Math.round(totalTTC * 100) / 100,
+      totalHT: roundCentimes(totalHT),
+      totalTVA: roundCentimes(totalTVA),
+      totalTTC: roundCentimes(totalTTC),
       notes: orderNotes,
     });
 
@@ -217,14 +222,14 @@ export const SuppliersTab: React.FC = () => {
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
               <span className="text-xs text-slate-500">Total Dépenses Pièces (HT)</span>
               <p className="text-xl font-black text-slate-900 mt-1 tabular-nums">
-                {supplierOrders.reduce((sum, o) => sum + o.totalHT, 0).toFixed(2)} €
+                {formatDecimal2(supplierOrders.reduce((sum, o) => sum + o.totalHT, 0))} €
               </p>
               <span className="text-[11px] text-slate-400">Totalité des commandes passées</span>
             </div>
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
               <span className="text-xs text-slate-500">TVA Déductible Fournisseurs</span>
               <p className="text-xl font-black text-emerald-600 mt-1 tabular-nums">
-                {supplierOrders.reduce((sum, o) => sum + o.totalTVA, 0).toFixed(2)} €
+                {formatDecimal2(supplierOrders.reduce((sum, o) => sum + o.totalTVA, 0))} €
               </p>
               <span className="text-[11px] text-slate-400">À récupérer sur déclaration TVA</span>
             </div>
@@ -267,13 +272,13 @@ export const SuppliersTab: React.FC = () => {
                           {formatDate(order.orderDate)}
                         </td>
                         <td className="py-3 px-4 text-slate-600 max-w-xs truncate">
-                          {order.items.map((it) => `${it.quantity}x ${it.description}`).join(', ')}
+                          {order.items.map((it) => `${formatDecimal2(it.quantity)}x ${it.description}`).join(', ')}
                         </td>
                         <td className="py-3 px-4 text-right font-mono font-medium text-slate-800 tabular-nums">
-                          {order.totalHT.toFixed(2)} €
+                          {formatDecimal2(order.totalHT)} €
                         </td>
                         <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 tabular-nums">
-                          {order.totalTTC.toFixed(2)} €
+                          {formatDecimal2(order.totalTTC)} €
                         </td>
                         <td className="py-3 px-4">
                           <select
@@ -400,7 +405,7 @@ export const SuppliersTab: React.FC = () => {
 
               <div>
                 <label className="font-semibold text-slate-700 block mb-1">
-                  Coefficient Multiplicateur Garage : {calcCoefficient}x
+                  Coefficient Multiplicateur Garage : {formatDecimal2(calcCoefficient)}x
                 </label>
                 <input
                   type="range"
@@ -412,9 +417,9 @@ export const SuppliersTab: React.FC = () => {
                   className="w-full cursor-pointer accent-sky-600"
                 />
                 <div className="flex justify-between text-[10px] text-slate-400 mt-1">
-                  <span>1.2x (Gros volume)</span>
+                  <span>1.20x (Gros volume)</span>
                   <span>1.75x (Standard atelier)</span>
-                  <span>2.5x+ (Petite visserie)</span>
+                  <span>2.50x+ (Petite visserie)</span>
                 </div>
               </div>
             </div>
@@ -429,25 +434,25 @@ export const SuppliersTab: React.FC = () => {
                 <div className="flex justify-between text-xs text-slate-600">
                   <span>Prix de vente conseillé HT :</span>
                   <span className="font-mono font-bold text-slate-900 text-sm tabular-nums">
-                    {suggestedSaleHT.toFixed(2)} € HT
+                    {formatDecimal2(suggestedSaleHT)} € HT
                   </span>
                 </div>
 
                 <div className="flex justify-between text-xs text-slate-600">
-                  <span>Prix avec TVA 20% (TTC) :</span>
+                  <span>Prix avec TVA 20.00% (TTC) :</span>
                   <span className="font-mono font-bold text-sky-700 text-base tabular-nums">
-                    {suggestedSaleTTC.toFixed(2)} € TTC
+                    {formatDecimal2(suggestedSaleTTC)} € TTC
                   </span>
                 </div>
 
                 <div className="pt-2 border-t border-slate-200">
                   <div className="flex justify-between text-xs text-emerald-700 font-semibold">
                     <span>Marge brute en euros :</span>
-                    <span className="font-mono tabular-nums">+{suggestedMarginHT.toFixed(2)} € HT</span>
+                    <span className="font-mono tabular-nums">+{formatDecimal2(suggestedMarginHT)} € HT</span>
                   </div>
                   <div className="flex justify-between text-xs text-emerald-700 font-semibold mt-1">
                     <span>Taux de marge brute :</span>
-                    <span className="font-mono tabular-nums">{marginPercent.toFixed(2)}%</span>
+                    <span className="font-mono tabular-nums">{formatDecimal2(marginPercent)}%</span>
                   </div>
                 </div>
               </div>
@@ -672,17 +677,16 @@ export const SuppliersTab: React.FC = () => {
                         }}
                         className="flex-1 border border-slate-300 rounded p-1.5 text-xs"
                       />
-                      <input
-                        type="number"
-                        min="1"
-                        placeholder="Qté"
+                      <PriceInput
+                        min={1}
+                        placeholder="1.00"
                         value={item.quantity}
-                        onChange={(e) => {
+                        onChange={(val) => {
                           const updated = [...orderItems];
-                          updated[idx].quantity = Number(e.target.value);
+                          updated[idx].quantity = val;
                           setOrderItems(updated);
                         }}
-                        className="w-14 border border-slate-300 rounded p-1.5 text-xs text-right tabular-nums"
+                        className="w-16 border border-slate-300 rounded p-1.5 text-xs text-right tabular-nums font-mono"
                       />
                       <div className="flex items-center gap-1">
                         <PriceInput

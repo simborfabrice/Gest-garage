@@ -23,6 +23,7 @@ import {
   Database,
 } from 'lucide-react';
 import { BackupSnapshot } from '../types';
+import { formatDecimal2 } from '../services/storage';
 
 export const BackupRestoreModal: React.FC = () => {
   const {
@@ -151,7 +152,7 @@ export const BackupRestoreModal: React.FC = () => {
 
         setFileToImport({
           name: file.name,
-          size: `${(file.size / 1024).toFixed(1)} Ko`,
+          size: `${formatDecimal2(file.size / 1024)} Ko`,
           content: text,
           summary,
         });
@@ -159,7 +160,7 @@ export const BackupRestoreModal: React.FC = () => {
       } catch (err: any) {
         setFileToImport({
           name: file.name,
-          size: `${(file.size / 1024).toFixed(1)} Ko`,
+          size: `${formatDecimal2(file.size / 1024)} Ko`,
           content: '',
           error: 'Le fichier sélectionné n’est pas un JSON valide.',
         });
@@ -186,7 +187,7 @@ export const BackupRestoreModal: React.FC = () => {
 
       setFileToImport({
         name: 'Données collées manuellement',
-        size: `${(new Blob([importText]).size / 1024).toFixed(1)} Ko`,
+        size: `${formatDecimal2(new Blob([importText]).size / 1024)} Ko`,
         content: importText,
         summary,
       });
@@ -409,7 +410,7 @@ export const BackupRestoreModal: React.FC = () => {
                       {cashTransactions.length} <span className="text-xs font-normal text-slate-500">lignes</span>
                     </div>
                     <div className="text-[10px] text-emerald-600 font-semibold truncate">
-                      {totalFactureTTC.toFixed(2)} € TTC facturés
+                      {formatDecimal2(totalFactureTTC)} € TTC facturés
                     </div>
                   </div>
                 </div>

@@ -84,34 +84,60 @@ p.font-mono {
   background-color: var(--table-header-bg, #f1f5f9);
 }
 
-/* Print specific styles for Invoices, Quotes, Orders, Workshop Cards, and Cash receipts */
+/* Print specific styles: print only pages with data and automatically exclude blank/empty pages */
 @media print {
   @page {
     size: A4 portrait;
-    margin: 8mm 8mm 8mm 8mm;
+    margin: 8mm;
   }
 
-  html, body {
+  html,
+  body {
     background: white !important;
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
     height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
     font-size: 11pt;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* Hide app chrome, navigation, buttons and desktop UI */
-  header, nav, aside, .no-print, .print-guide-margin, .no-print * {
+  /* Prevent viewport-height wrappers from generating trailing blank pages */
+  .min-h-screen,
+  main,
+  #root,
+  #root > div,
+  #root > div > div {
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Hide app chrome, navigation, interactive controls, and empty/excluded blocks */
+  header,
+  nav,
+  aside,
+  .no-print,
+  .no-print *,
+  .print-guide-margin,
+  [data-print-empty="true"],
+  .print-page:empty,
+  .print-exclude-empty:empty {
     display: none !important;
   }
 
-  body * {
-    visibility: hidden;
+  /* When a dedicated printable view is open, remove everything outside it from layout flow (zero blank pages) */
+  body:has(#printable-document) *:not(:has(#printable-document)):not(#printable-document):not(#printable-document *),
+  body:has(#printable-receipt) *:not(:has(#printable-receipt)):not(#printable-receipt):not(#printable-receipt *),
+  body:has(#printable-z) *:not(:has(#printable-z)):not(#printable-z):not(#printable-z *),
+  body:has(#printable-daily-settlements) *:not(:has(#printable-daily-settlements)):not(#printable-daily-settlements):not(#printable-daily-settlements *) {
+    display: none !important;
   }
 
-  /* Make sure modal overlays do not block or hide printable documents */
+  /* Reset modal wrappers so printable content flows naturally across only data-bearing pages */
   .document-modal-wrapper,
   .document-modal-card,
   .document-modal-body {
@@ -123,32 +149,24 @@ p.font-mono {
     border: none !important;
     box-shadow: none !important;
     overflow: visible !important;
-    visibility: visible !important;
     max-height: none !important;
+    min-height: 0 !important;
+    height: auto !important;
     max-width: 100% !important;
     width: 100% !important;
   }
 
   #printable-document,
-  #printable-document *,
   #printable-receipt,
-  #printable-receipt *,
   #printable-z,
-  #printable-z *,
-  #printable-daily-settlements,
-  #printable-daily-settlements * {
-    visibility: visible !important;
-  }
-
-  #printable-document {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+  #printable-daily-settlements {
+    position: static !important;
     width: 100% !important;
     max-width: 100% !important;
-    min-height: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
     margin: 0 !important;
-    padding: 6mm 8mm !important;
+    padding: 4mm 6mm !important;
     background: white !important;
     color: #0f172a !important;
     box-shadow: none !important;
@@ -162,23 +180,15 @@ p.font-mono {
     transform: none !important;
   }
 
-  #printable-receipt,
-  #printable-z,
-  #printable-daily-settlements {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 10mm !important;
-    background: white !important;
-    color: #0f172a !important;
-    box-shadow: none !important;
-    border: none !important;
+  /* Only apply explicit page breaks between non-empty print pages */
+  .print-page + .print-page {
+    break-before: page;
+    page-break-before: always;
   }
 
-  /* Prevent awkward page breaks */
-  tr, .avoid-break {
+  /* Prevent awkward page breaks inside rows/cards */
+  tr,
+  .avoid-break {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }

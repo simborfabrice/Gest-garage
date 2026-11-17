@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { CatalogItem } from '../types';
 import { PriceInput } from './PriceInput';
-import { roundCentimes } from '../services/storage';
+import { roundCentimes, formatDecimal2 } from '../services/storage';
 
 interface CatalogShortcutsModalProps {
   isOpen: boolean;
@@ -247,13 +247,11 @@ export const CatalogShortcutsModal: React.FC<CatalogShortcutsModalProps> = ({
 
                 <div>
                   <label className="font-semibold text-slate-700 block mb-1">Quantité par défaut</label>
-                  <input
-                    type="number"
-                    min="0.01"
-                    step="0.01"
+                  <PriceInput
+                    min={0.01}
                     value={formData.defaultQuantity}
-                    onChange={(e) => setFormData({ ...formData, defaultQuantity: roundCentimes(Number(e.target.value)) })}
-                    className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white tabular-nums"
+                    onChange={(val) => setFormData({ ...formData, defaultQuantity: val })}
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white tabular-nums font-mono"
                   />
                 </div>
 
@@ -277,7 +275,7 @@ export const CatalogShortcutsModal: React.FC<CatalogShortcutsModalProps> = ({
                     required
                     value={formData.unitPriceHT}
                     onChange={(val) => setFormData({ ...formData, unitPriceHT: val })}
-                    className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white font-bold text-slate-900 tabular-nums"
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white font-bold text-slate-900 tabular-nums font-mono"
                   />
                 </div>
 
@@ -286,19 +284,19 @@ export const CatalogShortcutsModal: React.FC<CatalogShortcutsModalProps> = ({
                   <select
                     value={formData.tvaRate}
                     onChange={(e) => setFormData({ ...formData, tvaRate: Number(e.target.value) })}
-                    className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white font-mono"
                   >
-                    <option value={20}>20% (Taux normal standard)</option>
-                    <option value={10}>10% (Taux intermédiaire)</option>
-                    <option value={5.5}>5.5% (Taux réduit)</option>
-                    <option value={0}>0% (Exonéré de TVA)</option>
+                    <option value={20}>20.00% (Taux normal standard)</option>
+                    <option value={10}>10.00% (Taux intermédiaire)</option>
+                    <option value={5.5}>5.50% (Taux réduit)</option>
+                    <option value={0}>0.00% (Exonéré de TVA)</option>
                   </select>
                 </div>
               </div>
 
               <div className="flex items-center justify-between pt-3 border-t border-slate-200">
                 <span className="text-slate-500 text-[11px]">
-                  Prix TTC calculé : <strong className="text-slate-900 font-mono">{roundCentimes(formData.unitPriceHT * (1 + formData.tvaRate / 100)).toFixed(2)} € TTC</strong>
+                  Prix TTC calculé : <strong className="text-slate-900 font-mono">{formatDecimal2(formData.unitPriceHT * (1 + formData.tvaRate / 100))} € TTC</strong>
                 </span>
 
                 <div className="flex items-center gap-2">
@@ -367,10 +365,10 @@ export const CatalogShortcutsModal: React.FC<CatalogShortcutsModalProps> = ({
                         <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
                           <div className="text-right">
                             <span className="font-mono font-black text-slate-900 text-sm tabular-nums block">
-                              {item.unitPriceHT.toFixed(2)} € HT
+                              {formatDecimal2(item.unitPriceHT)} € HT
                             </span>
-                            <span className="text-[10px] text-slate-500 tabular-nums">
-                              {priceTTC.toFixed(2)} € TTC (TVA {item.tvaRate}%)
+                            <span className="text-[10px] text-slate-500 tabular-nums font-mono">
+                              {formatDecimal2(priceTTC)} € TTC (TVA {formatDecimal2(item.tvaRate)}%)
                             </span>
                           </div>
 

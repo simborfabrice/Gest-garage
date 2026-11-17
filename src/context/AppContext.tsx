@@ -16,7 +16,7 @@ import {
   WorkshopBay,
   BackupSnapshot,
 } from '../types';
-import { storageService, recalculateDocumentTotals } from '../services/storage';
+import { storageService, recalculateDocumentTotals, roundCentimes } from '../services/storage';
 
 interface AppContextType {
   // Theme & Garage
@@ -384,10 +384,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Document operations
+  const sanitizeItems = (docItems: GarageDocument['items']) =>
+    docItems.map((it) => ({
+      ...it,
+      quantity: roundCentimes(it.quantity || 0),
+      unitPriceHT: roundCentimes(it.unitPriceHT || 0),
+      tvaRate: roundCentimes(it.tvaRate ?? 20),
+    }));
+
   const addDocument = (data: Omit<GarageDocument, 'id'>): GarageDocument => {
-    const totals = recalculateDocumentTotals(data.items);
+    const cleanItems = sanitizeItems(data.items);
+    const totals = recalculateDocumentTotals(cleanItems);
     const newDoc: GarageDocument = {
       ...data,
+      items: cleanItems,
+      amountPaid: roundCentimes(data.amountPaid || 0),
       ...totals,
       id: `doc-${Date.now()}`,
     };
@@ -401,10 +412,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let modifiedDoc: GarageDocument | null = null;
     const updated = documents.map((d) => {
       if (d.id !== id) return d;
-      const combined = { ...d, ...data };
+      const combined = {
+        ...d,
+        ...data,
+        ...(data.amountPaid !== undefined ? { amountPaid: roundCentimes(data.amountPaid) } : {}),
+      };
       if (data.items) {
-        const totals = recalculateDocumentTotals(combined.items);
-        modifiedDoc = { ...combined, ...totals };
+        const cleanItems = sanitizeItems(combined.items);
+        const totals = recalculateDocumentTotals(cleanItems);
+        modifiedDoc = { ...combined, items: cleanItems, ...totals };
         return modifiedDoc;
       }
       modifiedDoc = combined;
@@ -479,7 +495,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       dueDate: dueDate.toISOString().split('T')[0],
       status: order.amountPaid >= order.totalTTC ? 'paye' : order.amountPaid > 0 ? 'partiellement_paye' : 'envoye',
       relatedOrderId: order.id,
-      notes: `Facturation finale relative au bon de commande ${order.referenceNumber}. Travaux réalisés avec succès.`,
+      notes: '',
     };
 
     const updated = [newInvoice, ...documents];

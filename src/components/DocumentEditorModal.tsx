@@ -14,9 +14,10 @@ import {
   DollarSign,
   AlertCircle,
   Eye,
+  Search,
 } from 'lucide-react';
 import { CatalogItem, DocumentItem, DocumentStatus, DocumentType, GarageDocument, Vehicle, Client } from '../types';
-import { recalculateDocumentTotals, roundCentimes } from '../services/storage';
+import { recalculateDocumentTotals, roundCentimes, formatDecimal2 } from '../services/storage';
 import { CatalogShortcutsModal } from './CatalogShortcutsModal';
 import { PriceInput } from './PriceInput';
 
@@ -57,6 +58,7 @@ export const DocumentEditorModal: React.FC = () => {
 
   // Direct Client & Vehicle input states
   const [clientInputMode, setClientInputMode] = useState<'select' | 'direct'>('select');
+  const [clientNameSearch, setClientNameSearch] = useState('');
   const [directClientType, setDirectClientType] = useState<'particulier' | 'professionnel'>('particulier');
   const [directClientLastName, setDirectClientLastName] = useState('');
   const [directClientFirstName, setDirectClientFirstName] = useState('');
@@ -97,6 +99,7 @@ export const DocumentEditorModal: React.FC = () => {
           : []
       );
       setClientInputMode('select');
+      setClientNameSearch('');
       setVehicleInputMode('select');
       const docCli = clients.find((c) => c.id === editingDocument.clientId);
       if (docCli) {
@@ -441,25 +444,89 @@ export const DocumentEditorModal: React.FC = () => {
                 </div>
 
                 {clientInputMode === 'select' ? (
-                  <div>
-                    <select
-                      value={clientId}
-                      onChange={(e) => {
-                        const newCId = e.target.value;
-                        setClientId(newCId);
-                        const matchingVehicles = vehicles.filter((v) => v.clientId === newCId);
-                        if (matchingVehicles.length > 0) {
-                          setVehicleId(matchingVehicles[0].id);
-                        }
-                      }}
-                      className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
-                    >
-                      {clients.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.type === 'professionnel' ? `${c.companyName || c.lastName} (${c.firstName} ${c.lastName})` : `${c.firstName} ${c.lastName}`} {c.phone ? `— ${c.phone}` : ''}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="space-y-2">
+                    {(() => {
+                      const normalizeClientName = (val: string) =>
+                        val.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+                      const q = normalizeClientName(clientNameSearch);
+                      const filteredClientsByName = q
+                        ? clients.filter((c) => {
+                            const lastName = normalizeClientName(c.lastName || '');
+                            const companyName = c.type === 'professionnel' ? normalizeClientName(c.companyName || '') : '';
+                            return lastName.includes(q) || companyName.includes(q);
+                          })
+                        : clients;
+
+                      return (
+                        <>
+                          <div>
+                            <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                              Rechercher client par nom
+                            </label>
+                            <div className="relative">
+                              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
+                              <input
+                                type="text"
+                                value={clientNameSearch}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setClientNameSearch(val);
+                                  const nq = normalizeClientName(val);
+                                  if (nq) {
+                                    const matches = clients.filter((c) => {
+                                      const lastName = normalizeClientName(c.lastName || '');
+                                      const companyName = c.type === 'professionnel' ? normalizeClientName(c.companyName || '') : '';
+                                      return lastName.includes(nq) || companyName.includes(nq);
+                                    });
+                                    if (matches.length > 0 && !matches.some((m) => m.id === clientId)) {
+                                      const firstMatch = matches[0];
+                                      setClientId(firstMatch.id);
+                                      const matchingVehicles = vehicles.filter((v) => v.clientId === firstMatch.id);
+                                      setVehicleId(matchingVehicles.length > 0 ? matchingVehicles[0].id : '');
+                                    }
+                                  }
+                                }}
+                                placeholder="Taper uniquement le nom du client..."
+                                className="w-full pl-8 pr-7 py-1.5 text-xs border border-slate-300 rounded-lg bg-white focus:outline-hidden focus:border-sky-500"
+                              />
+                              {clientNameSearch && (
+                                <button
+                                  type="button"
+                                  onClick={() => setClientNameSearch('')}
+                                  className="absolute right-2 top-2 text-slate-400 hover:text-slate-600"
+                                  title="Effacer la recherche"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <select
+                            value={filteredClientsByName.some((c) => c.id === clientId) ? clientId : ''}
+                            onChange={(e) => {
+                              const newCId = e.target.value;
+                              setClientId(newCId);
+                              const matchingVehicles = vehicles.filter((v) => v.clientId === newCId);
+                              if (matchingVehicles.length > 0) {
+                                setVehicleId(matchingVehicles[0].id);
+                              }
+                            }}
+                            className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                          >
+                            {filteredClientsByName.length === 0 ? (
+                              <option value="">Aucun client trouvé pour ce nom</option>
+                            ) : (
+                              filteredClientsByName.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  {c.type === 'professionnel' ? `${c.companyName || c.lastName} (${c.firstName} ${c.lastName})` : `${c.firstName} ${c.lastName}`} {c.phone ? `— ${c.phone}` : ''}
+                                </option>
+                              ))
+                            )}
+                          </select>
+                        </>
+                      );
+                    })()}
 
                     {currentClient?.type === 'professionnel' && (
                       <div className="mt-2.5 p-2.5 bg-sky-50/80 border border-sky-200 rounded-lg">
@@ -707,7 +774,7 @@ export const DocumentEditorModal: React.FC = () => {
                     />
                     {status === 'paye' && (
                       <span className="text-[10px] text-emerald-700 mt-0.5 block font-medium">
-                        Facture entièrement acquittée ({liveTotals.totalTTC.toFixed(2)} €)
+                        Facture entièrement acquittée ({formatDecimal2(liveTotals.totalTTC)} €)
                       </span>
                     )}
                   </div>
@@ -819,14 +886,12 @@ export const DocumentEditorModal: React.FC = () => {
                       <div className="flex flex-wrap items-center gap-3">
                         <div className="flex items-center gap-1">
                           <span className="text-[11px] text-slate-500 font-medium">Qté :</span>
-                          <input
-                            type="number"
-                            min="0.01"
-                            step="0.01"
+                          <PriceInput
+                            min={0.01}
                             value={it.quantity}
-                            onChange={(e) => {
+                            onChange={(val) => {
                               const updated = [...items];
-                              updated[idx].quantity = roundCentimes(Number(e.target.value));
+                              updated[idx].quantity = val;
                               setItems(updated);
                             }}
                             className="w-16 border border-slate-300 rounded-lg p-1 text-xs text-right tabular-nums bg-white font-mono"
@@ -867,18 +932,16 @@ export const DocumentEditorModal: React.FC = () => {
 
                         <div className="flex items-center gap-1">
                           <span className="text-[11px] text-slate-500 font-medium">Remise :</span>
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="1"
+                          <PriceInput
+                            min={0}
+                            max={100}
                             value={it.discountPercent || 0}
-                            onChange={(e) => {
+                            onChange={(val) => {
                               const updated = [...items];
-                              updated[idx].discountPercent = Number(e.target.value);
+                              updated[idx].discountPercent = val;
                               setItems(updated);
                             }}
-                            className="w-14 border border-slate-300 rounded-lg p-1 text-xs text-right tabular-nums bg-white font-mono"
+                            className="w-16 border border-slate-300 rounded-lg p-1 text-xs text-right tabular-nums bg-white font-mono"
                           />
                           <span className="text-[11px] text-slate-400">%</span>
                         </div>
@@ -892,21 +955,21 @@ export const DocumentEditorModal: React.FC = () => {
                               updated[idx].tvaRate = Number(e.target.value);
                               setItems(updated);
                             }}
-                            className="w-20 border border-slate-300 rounded-lg p-1 text-xs bg-white font-medium"
+                            className="w-22 border border-slate-300 rounded-lg p-1 text-xs bg-white font-mono font-medium"
                           >
-                            <option value={20}>20%</option>
-                            <option value={10}>10%</option>
-                            <option value={5.5}>5.5%</option>
-                            <option value={0}>0%</option>
+                            <option value={20}>20.00%</option>
+                            <option value={10}>10.00%</option>
+                            <option value={5.5}>5.50%</option>
+                            <option value={0}>0.00%</option>
                           </select>
                         </div>
 
                         <div className="flex items-center gap-1.5 pl-1 text-[11px] font-mono">
                           <span className="text-slate-600">
-                            Total : <strong className="text-slate-900">{lineDiscounted.toFixed(2)} € HT</strong>
+                            Total : <strong className="text-slate-900">{formatDecimal2(lineDiscounted)} € HT</strong>
                           </span>
                           <span className="text-sky-900 font-bold bg-sky-50 px-1 py-0.5 rounded border border-sky-200">
-                            {lineTTC.toFixed(2)} € TTC
+                            {formatDecimal2(lineTTC)} € TTC
                           </span>
                         </div>
                       </div>
@@ -932,7 +995,7 @@ export const DocumentEditorModal: React.FC = () => {
           {/* Section 3: Notes & Remarks */}
           <div>
             <label className="block text-[11px] font-bold text-slate-700 mb-1">
-              Remarque (affichée en bas du document)
+              Remarque (affichée sous le mode de règlement sur les factures)
             </label>
             <textarea
               rows={2}
@@ -950,7 +1013,7 @@ export const DocumentEditorModal: React.FC = () => {
                 Pièces HT
               </span>
               <span className="text-sm font-mono font-bold text-slate-200">
-                {liveTotals.totalPartsHT.toFixed(2)} €
+                {formatDecimal2(liveTotals.totalPartsHT)} €
               </span>
             </div>
 
@@ -959,7 +1022,7 @@ export const DocumentEditorModal: React.FC = () => {
                 Main d'œuvre HT
               </span>
               <span className="text-sm font-mono font-bold text-slate-200">
-                {liveTotals.totalLaborHT.toFixed(2)} €
+                {formatDecimal2(liveTotals.totalLaborHT)} €
               </span>
             </div>
 
@@ -968,7 +1031,7 @@ export const DocumentEditorModal: React.FC = () => {
                 Total Net HT
               </span>
               <span className="text-sm font-mono font-bold text-sky-300">
-                {liveTotals.totalHT.toFixed(2)} €
+                {formatDecimal2(liveTotals.totalHT)} €
               </span>
             </div>
 
@@ -977,7 +1040,7 @@ export const DocumentEditorModal: React.FC = () => {
                 TVA Totale
               </span>
               <span className="text-sm font-mono font-bold text-slate-200">
-                {liveTotals.totalTVA.toFixed(2)} €
+                {formatDecimal2(liveTotals.totalTVA)} €
               </span>
             </div>
 
@@ -986,7 +1049,7 @@ export const DocumentEditorModal: React.FC = () => {
                 Total TTC Net
               </span>
               <span className="text-base font-mono font-black text-emerald-400">
-                {liveTotals.totalTTC.toFixed(2)} €
+                {formatDecimal2(liveTotals.totalTTC)} €
               </span>
             </div>
           </div>

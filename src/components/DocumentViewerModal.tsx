@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { formatDate } from '../utils/dateUtils';
 import { printElement, downloadPrintableHtml } from '../utils/printUtils';
-import { roundCentimes } from '../services/storage';
+import { roundCentimes, formatDecimal2 } from '../services/storage';
 
 type ViewLayoutMode = 'official_standard' | 'official_compact' | 'workshop_card' | 'handover';
 
@@ -387,7 +387,7 @@ export const DocumentViewerModal: React.FC = () => {
                       : '';
                     return (
                       <option key={d.id} value={d.id} className="bg-slate-900 text-white">
-                        Devis {d.referenceNumber} — {clName} ({d.totalTTC.toFixed(2)} €)
+                        Devis {d.referenceNumber} — {clName} ({formatDecimal2(d.totalTTC)} €)
                       </option>
                     );
                   })}
@@ -404,7 +404,7 @@ export const DocumentViewerModal: React.FC = () => {
                       : '';
                     return (
                       <option key={d.id} value={d.id} className="bg-slate-900 text-white">
-                        Commande {d.referenceNumber} — {clName} ({d.totalTTC.toFixed(2)} €)
+                        Commande {d.referenceNumber} — {clName} ({formatDecimal2(d.totalTTC)} €)
                       </option>
                     );
                   })}
@@ -421,7 +421,7 @@ export const DocumentViewerModal: React.FC = () => {
                       : '';
                     return (
                       <option key={d.id} value={d.id} className="bg-slate-900 text-white">
-                        Facture {d.referenceNumber} — {clName} ({d.totalTTC.toFixed(2)} €)
+                        Facture {d.referenceNumber} — {clName} ({formatDecimal2(d.totalTTC)} €)
                       </option>
                     );
                   })}
@@ -431,7 +431,7 @@ export const DocumentViewerModal: React.FC = () => {
                   const sup = suppliers.find((s) => s.id === o.supplierId);
                   return (
                     <option key={o.id} value={`sup_${o.id}`} className="bg-slate-900 text-white">
-                      Cmd Fournisseur {o.orderNumber} — {sup?.name || 'Inconnu'} ({o.totalTTC.toFixed(2)} €)
+                      Cmd Fournisseur {o.orderNumber} — {sup?.name || 'Inconnu'} ({formatDecimal2(o.totalTTC)} €)
                     </option>
                   );
                 })}
@@ -734,7 +734,6 @@ export const DocumentViewerModal: React.FC = () => {
 
               {/* -------------------- 1. FORMAT DE FACTURATION TYPE OFFICIEL -------------------- */}
               {!isSupplierOrder && doc && layoutMode === 'official_standard' && (
-                <>
                 <div className="space-y-4">
                   {/* TOP HEADER: Émetteur (Garage) & Destinataire (Client) - Norme AFNOR */}
                   <div className="grid grid-cols-12 gap-6 items-start pb-4 border-b border-slate-300">
@@ -958,25 +957,22 @@ export const DocumentViewerModal: React.FC = () => {
                                 <span>{it.description}</span>
                               </td>
                               <td className="py-2 px-2 text-right border-r border-slate-200 font-mono text-slate-800 tabular-nums">
-                                {qty.toLocaleString('fr-FR', {
-                                  minimumFractionDigits: Number.isInteger(qty) ? 0 : 2,
-                                  maximumFractionDigits: 2,
-                                })}
+                                {formatDecimal2(qty)}
                               </td>
                               <td className="py-2 px-2 text-right border-r border-slate-200 font-mono text-slate-700 tabular-nums">
-                                {unitHT.toFixed(2)} €
+                                {formatDecimal2(unitHT)} €
                               </td>
                               <td className="py-2 px-1.5 text-right border-r border-slate-200 font-mono text-slate-500 tabular-nums">
-                                {discount > 0 ? `${discount}%` : '—'}
+                                {discount > 0 ? `${formatDecimal2(discount)}%` : '—'}
                               </td>
                               <td className="py-2 px-2 text-right border-r border-slate-200 font-mono font-semibold text-slate-900 tabular-nums">
-                                {lineHT.toFixed(2)} €
+                                {formatDecimal2(lineHT)} €
                               </td>
                               <td className="py-2 px-1.5 text-right border-r border-slate-200 font-mono text-slate-600 tabular-nums text-[10.5px]">
-                                {Number.isInteger(rate) ? `${rate}%` : `${rate.toFixed(2)}%`}
+                                {formatDecimal2(rate)}%
                               </td>
                               <td className="py-2 px-2.5 text-right font-mono font-bold text-slate-900 tabular-nums">
-                                {lineTTC.toFixed(2)} €
+                                {formatDecimal2(lineTTC)} €
                               </td>
                             </tr>
                           );
@@ -1017,6 +1013,25 @@ export const DocumentViewerModal: React.FC = () => {
                           </div>
                         </div>
                       </div>
+
+                      {/* Case Remarque sous le Mode de règlement (Factures) */}
+                      {isInvoice && (
+                        <div className="p-3 border border-slate-300 rounded-lg bg-white min-h-[88px] flex flex-col">
+                          <span className="font-bold text-slate-800 uppercase tracking-wider text-[10px] block mb-1">
+                            Remarque
+                          </span>
+                          <textarea
+                            value={doc.notes || ''}
+                            onChange={(e) => updateDocument(doc.id, { notes: e.target.value })}
+                            aria-label="Remarque"
+                            rows={3}
+                            className="no-print w-full bg-white text-[11px] text-slate-700 leading-relaxed resize-none focus:outline-hidden"
+                          />
+                          <p className="hidden print:block text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed min-h-[48px]">
+                            {doc.notes || ''}
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     {/* DROITE (Col 5) : Grand Total TTC, Acompte & Reste à Payer */}
@@ -1025,13 +1040,13 @@ export const DocumentViewerModal: React.FC = () => {
                         <div className="flex justify-between text-slate-700">
                           <span>TOTAL GÉNÉRAL HT :</span>
                           <span className="font-mono font-bold tabular-nums">
-                            {roundCentimes(doc.totalHT).toFixed(2)} €
+                            {formatDecimal2(doc.totalHT)} €
                           </span>
                         </div>
                         <div className="flex justify-between text-slate-700">
                           <span>TOTAL TVA :</span>
                           <span className="font-mono tabular-nums">
-                            {roundCentimes(doc.totalTVA).toFixed(2)} €
+                            {formatDecimal2(doc.totalTVA)} €
                           </span>
                         </div>
 
@@ -1042,7 +1057,7 @@ export const DocumentViewerModal: React.FC = () => {
                         >
                           <span>TOTAL TTC EN EUROS :</span>
                           <span className="font-mono text-base tabular-nums">
-                            {roundCentimes(doc.totalTTC).toFixed(2)} €
+                            {formatDecimal2(doc.totalTTC)} €
                           </span>
                         </div>
 
@@ -1053,13 +1068,13 @@ export const DocumentViewerModal: React.FC = () => {
                               <div className="flex justify-between text-emerald-700 font-semibold text-[11px]">
                                 <span>Acompte déjà versé :</span>
                                 <span className="font-mono tabular-nums">
-                                  -{roundCentimes(doc.amountPaid).toFixed(2)} €
+                                  -{formatDecimal2(doc.amountPaid)} €
                                 </span>
                               </div>
                               <div className="flex justify-between font-black text-slate-900 text-sm pt-1 border-t border-slate-300">
                                 <span>NET À PAYER :</span>
                                 <span className="font-mono text-base tabular-nums text-slate-950">
-                                  {roundCentimes(Math.max(0, doc.totalTTC - doc.amountPaid)).toFixed(2)} €
+                                  {formatDecimal2(Math.max(0, doc.totalTTC - doc.amountPaid))} €
                                 </span>
                               </div>
                             </>
@@ -1067,7 +1082,7 @@ export const DocumentViewerModal: React.FC = () => {
                             <div className="flex justify-between font-black text-slate-900 text-sm">
                               <span>NET À PAYER :</span>
                               <span className="font-mono text-base tabular-nums">
-                                {roundCentimes(doc.totalTTC).toFixed(2)} €
+                                {formatDecimal2(doc.totalTTC)} €
                               </span>
                             </div>
                           )}
@@ -1091,26 +1106,6 @@ export const DocumentViewerModal: React.FC = () => {
                     </div>
                   </div>
                 </div>
-
-                {/* CASE REMARQUE EN BAS DE PAGE */}
-                <div className="pt-4 mt-4 border-t border-slate-300 avoid-break">
-                  <div className="p-3 border border-slate-300 rounded-lg bg-slate-50/50 min-h-[78px] flex flex-col">
-                    <span className="font-bold text-slate-800 uppercase tracking-wider text-[10px] block mb-1">
-                      Remarque
-                    </span>
-                    <textarea
-                      value={doc.notes || ''}
-                      onChange={(e) => updateDocument(doc.id, { notes: e.target.value })}
-                      placeholder="Saisir une remarque..."
-                      rows={2}
-                      className="no-print w-full bg-transparent text-[11px] text-slate-700 leading-relaxed resize-none focus:outline-hidden placeholder:text-slate-400 placeholder:italic"
-                    />
-                    <p className="hidden print:block text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed min-h-[34px]">
-                      {doc.notes || ''}
-                    </p>
-                  </div>
-                </div>
-                </>
               )}
 
               {/* -------------------- 2. FICHE TECHNIQUE D'ATELIER (OR) -------------------- */}
@@ -1251,7 +1246,7 @@ export const DocumentViewerModal: React.FC = () => {
                               <td className="py-2 px-2.5 font-semibold text-slate-800">
                                 {it.description}
                               </td>
-                              <td className="py-2 px-2 text-right font-mono">{it.quantity}</td>
+                              <td className="py-2 px-2 text-right font-mono">{formatDecimal2(it.quantity)}</td>
                               <td className="py-2 px-2.5 border-l border-slate-200" />
                             </tr>
                           ))
@@ -1317,7 +1312,7 @@ export const DocumentViewerModal: React.FC = () => {
                       {doc.items.map((it, idx) => (
                         <li key={idx} className="p-2 flex items-center justify-between hover:bg-slate-50">
                           <span className="font-medium text-slate-800">{it.description}</span>
-                          <span className="text-slate-500 font-mono text-[11px]">Qté : {it.quantity}</span>
+                          <span className="text-slate-500 font-mono text-[11px]">Qté : {formatDecimal2(it.quantity)}</span>
                         </li>
                       ))}
                     </ul>
@@ -1433,11 +1428,11 @@ export const DocumentViewerModal: React.FC = () => {
                             {it.reference}
                           </td>
                           <td className="py-2 px-2.5 font-medium text-slate-800">{it.description}</td>
-                          <td className="py-2 px-2 text-right font-bold text-slate-900">{it.quantity}</td>
-                          <td className="py-2 px-2 text-right font-mono text-slate-700">{it.unitCostHT.toFixed(2)} €</td>
-                          <td className="py-2 px-2 text-right font-mono text-slate-500">{it.tvaRate}%</td>
+                          <td className="py-2 px-2 text-right font-mono font-bold text-slate-900">{formatDecimal2(it.quantity)}</td>
+                          <td className="py-2 px-2 text-right font-mono text-slate-700">{formatDecimal2(it.unitCostHT)} €</td>
+                          <td className="py-2 px-2 text-right font-mono text-slate-500">{formatDecimal2(it.tvaRate)}%</td>
                           <td className="py-2 px-2.5 text-right font-mono font-bold text-slate-900">
-                            {(it.quantity * it.unitCostHT).toFixed(2)} €
+                            {formatDecimal2(roundCentimes(it.quantity) * roundCentimes(it.unitCostHT))} €
                           </td>
                         </tr>
                       ))}
@@ -1451,15 +1446,15 @@ export const DocumentViewerModal: React.FC = () => {
                     <div className="w-64 p-3 bg-slate-50 rounded border border-slate-200 space-y-1.5 text-xs">
                       <div className="flex justify-between text-slate-700">
                         <span>Total Achat HT :</span>
-                        <span className="font-mono font-bold">{supOrder.totalHT.toFixed(2)} €</span>
+                        <span className="font-mono font-bold">{formatDecimal2(supOrder.totalHT)} €</span>
                       </div>
                       <div className="flex justify-between text-slate-600">
-                        <span>TVA Déductible (20%) :</span>
-                        <span className="font-mono">{supOrder.totalTVA.toFixed(2)} €</span>
+                        <span>TVA Déductible (20.00%) :</span>
+                        <span className="font-mono">{formatDecimal2(supOrder.totalTVA)} €</span>
                       </div>
                       <div className="flex justify-between items-center bg-sky-700 text-white p-2 rounded font-black text-sm">
                         <span>TOTAL TTC :</span>
-                        <span className="font-mono">{supOrder.totalTTC.toFixed(2)} €</span>
+                        <span className="font-mono">{formatDecimal2(supOrder.totalTTC)} €</span>
                       </div>
                     </div>
                   </div>

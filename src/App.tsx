@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
+import { prepareDocumentForPrint, cleanupDocumentAfterPrint } from './utils/printUtils';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { CalendarTab } from './components/tabs/CalendarTab';
@@ -16,6 +17,17 @@ import { BackupRestoreModal } from './components/BackupRestoreModal';
 
 const AppContent: React.FC = () => {
   const { activeTab, theme } = useApp();
+
+  useEffect(() => {
+    const onBeforePrint = () => prepareDocumentForPrint(document);
+    const onAfterPrint = () => cleanupDocumentAfterPrint(document);
+    window.addEventListener('beforeprint', onBeforePrint);
+    window.addEventListener('afterprint', onAfterPrint);
+    return () => {
+      window.removeEventListener('beforeprint', onBeforePrint);
+      window.removeEventListener('afterprint', onAfterPrint);
+    };
+  }, []);
 
   const renderActiveTab = () => {
     switch (activeTab) {

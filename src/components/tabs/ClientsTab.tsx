@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Client, Vehicle } from '../../types';
 import { formatDate, formatDateLong } from '../../utils/dateUtils';
+import { formatDecimal2 } from '../../services/storage';
 
 export const ClientsTab: React.FC = () => {
   const {
@@ -554,7 +555,7 @@ export const ClientsTab: React.FC = () => {
                     <span>Historique Devis & Factures</span>
                   </h4>
                   <span className="text-xs font-semibold text-emerald-700">
-                    Total Facturé Réglé : {totalSpentByClient.toFixed(2)} € TTC
+                    Total Facturé Réglé : {formatDecimal2(totalSpentByClient)} € TTC
                   </span>
                 </div>
 
@@ -592,7 +593,7 @@ export const ClientsTab: React.FC = () => {
 
                         <div className="flex items-center gap-2">
                           <span className="font-mono font-bold text-slate-900 mr-1">
-                            {doc.totalTTC.toFixed(2)} € TTC
+                            {formatDecimal2(doc.totalTTC)} € TTC
                           </span>
                           <button
                             type="button"

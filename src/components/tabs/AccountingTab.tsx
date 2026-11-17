@@ -16,6 +16,7 @@ import {
   Printer,
 } from 'lucide-react';
 import { formatDate } from '../../utils/dateUtils';
+import { roundCentimes, formatDecimal2 } from '../../services/storage';
 
 export const AccountingTab: React.FC = () => {
   const {
@@ -33,27 +34,26 @@ export const AccountingTab: React.FC = () => {
   // Filter invoices for sales
   const invoices = documents.filter((d) => d.type === 'facture');
 
-  const totalSalesHT = invoices.reduce((sum, d) => sum + d.totalHT, 0);
-  const totalSalesTTC = invoices.reduce((sum, d) => sum + d.totalTTC, 0);
-  const totalLaborHT = invoices.reduce((sum, d) => sum + d.totalLaborHT, 0);
-  const totalPartsHT = invoices.reduce((sum, d) => sum + d.totalPartsHT, 0);
-  const totalVatCollected = invoices.reduce((sum, d) => sum + d.totalTVA, 0);
+  const totalSalesHT = roundCentimes(invoices.reduce((sum, d) => sum + d.totalHT, 0));
+  const totalSalesTTC = roundCentimes(invoices.reduce((sum, d) => sum + d.totalTTC, 0));
+  const totalLaborHT = roundCentimes(invoices.reduce((sum, d) => sum + d.totalLaborHT, 0));
+  const totalPartsHT = roundCentimes(invoices.reduce((sum, d) => sum + d.totalPartsHT, 0));
+  const totalVatCollected = roundCentimes(invoices.reduce((sum, d) => sum + d.totalTVA, 0));
 
   // Supplier purchases
-  const totalPurchasesHT = supplierOrders.reduce((sum, o) => sum + o.totalHT, 0);
-  const totalPurchasesTTC = supplierOrders.reduce((sum, o) => sum + o.totalTTC, 0);
-  const totalVatDeductible = supplierOrders.reduce((sum, o) => sum + o.totalTVA, 0);
+  const totalPurchasesHT = roundCentimes(supplierOrders.reduce((sum, o) => sum + o.totalHT, 0));
+  const totalPurchasesTTC = roundCentimes(supplierOrders.reduce((sum, o) => sum + o.totalTTC, 0));
+  const totalVatDeductible = roundCentimes(supplierOrders.reduce((sum, o) => sum + o.totalTVA, 0));
 
   // Gross Margin & Net VAT
-  const grossMargin = totalSalesHT - totalPurchasesHT;
-  const grossMarginRate = totalSalesHT > 0 ? (grossMargin / totalSalesHT) * 100 : 0;
-  const netVatPayable = Math.max(0, totalVatCollected - totalVatDeductible);
+  const grossMargin = roundCentimes(totalSalesHT - totalPurchasesHT);
+  const grossMarginRate = totalSalesHT > 0 ? roundCentimes((grossMargin / totalSalesHT) * 100) : 0;
+  const netVatPayable = roundCentimes(Math.max(0, totalVatCollected - totalVatDeductible));
 
   // Unpaid invoices (créances)
   const pendingInvoices = invoices.filter((d) => d.status !== 'paye');
-  const totalPendingAmount = pendingInvoices.reduce(
-    (sum, d) => sum + (d.totalTTC - d.amountPaid),
-    0
+  const totalPendingAmount = roundCentimes(
+    pendingInvoices.reduce((sum, d) => sum + (d.totalTTC - d.amountPaid), 0)
   );
 
   // Monthly breakdown mock data for visualization
@@ -86,9 +86,9 @@ export const AccountingTab: React.FC = () => {
         inv.date,
         inv.referenceNumber,
         `"${clientName}"`,
-        inv.totalHT.toFixed(2),
-        inv.totalTVA.toFixed(2),
-        inv.totalTTC.toFixed(2),
+        formatDecimal2(inv.totalHT),
+        formatDecimal2(inv.totalTVA),
+        formatDecimal2(inv.totalTTC),
         inv.status,
         inv.paymentMethod || 'Non spécifié',
       ].join(';');
@@ -120,9 +120,9 @@ export const AccountingTab: React.FC = () => {
       ord.orderDate,
       ord.orderNumber,
       ord.supplierId,
-      ord.totalHT.toFixed(2),
-      ord.totalTVA.toFixed(2),
-      ord.totalTTC.toFixed(2),
+      formatDecimal2(ord.totalHT),
+      formatDecimal2(ord.totalTVA),
+      formatDecimal2(ord.totalTTC),
       ord.status,
     ].join(';'));
 
@@ -176,11 +176,11 @@ export const AccountingTab: React.FC = () => {
             Chiffre d'Affaires Atelier (HT)
           </span>
           <p className="text-2xl font-black text-slate-900 tabular-nums">
-            {totalSalesHT.toFixed(2)} €
+            {formatDecimal2(totalSalesHT)} €
           </p>
           <div className="flex justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-100">
             <span>Total Facturé TTC :</span>
-            <strong className="text-slate-800">{totalSalesTTC.toFixed(2)} €</strong>
+            <strong className="text-slate-800">{formatDecimal2(totalSalesTTC)} €</strong>
           </div>
         </div>
 
@@ -190,11 +190,11 @@ export const AccountingTab: React.FC = () => {
             Marge Brute Globale
           </span>
           <p className="text-2xl font-black text-emerald-600 tabular-nums">
-            {grossMargin.toFixed(2)} €
+            {formatDecimal2(grossMargin)} €
           </p>
           <div className="flex justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-100">
             <span>Taux de marge :</span>
-            <strong className="text-emerald-700">{grossMarginRate.toFixed(1)}%</strong>
+            <strong className="text-emerald-700">{formatDecimal2(grossMarginRate)}%</strong>
           </div>
         </div>
 
@@ -204,11 +204,11 @@ export const AccountingTab: React.FC = () => {
             TVA Nette à Reverser
           </span>
           <p className="text-2xl font-black text-blue-600 tabular-nums">
-            {netVatPayable.toFixed(2)} €
+            {formatDecimal2(netVatPayable)} €
           </p>
           <div className="flex justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-100">
-            <span>Collectée : {totalVatCollected.toFixed(2)} €</span>
-            <span>Déductible : {totalVatDeductible.toFixed(2)} €</span>
+            <span>Collectée : {formatDecimal2(totalVatCollected)} €</span>
+            <span>Déductible : {formatDecimal2(totalVatDeductible)} €</span>
           </div>
         </div>
 
@@ -218,7 +218,7 @@ export const AccountingTab: React.FC = () => {
             Créances Clients en Attente
           </span>
           <p className={`text-2xl font-black tabular-nums ${totalPendingAmount > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
-            {totalPendingAmount.toFixed(2)} €
+            {formatDecimal2(totalPendingAmount)} €
           </p>
           <div className="flex justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-100">
             <span>{pendingInvoices.length} facture(s) non soldée(s)</span>
@@ -245,7 +245,7 @@ export const AccountingTab: React.FC = () => {
             <div>
               <div className="flex justify-between font-semibold text-slate-800 mb-1">
                 <span>Main d'œuvre Qualifiée & Forfaits :</span>
-                <span className="font-mono tabular-nums font-bold">{totalLaborHT.toFixed(2)} €</span>
+                <span className="font-mono tabular-nums font-bold">{formatDecimal2(totalLaborHT)} €</span>
               </div>
               <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
                 <div
@@ -257,7 +257,7 @@ export const AccountingTab: React.FC = () => {
                 />
               </div>
               <span className="text-[10px] text-slate-400 mt-1 block">
-                {totalSalesHT > 0 ? ((totalLaborHT / totalSalesHT) * 100).toFixed(2) : '0.00'}% du CA total
+                {totalSalesHT > 0 ? formatDecimal2((totalLaborHT / totalSalesHT) * 100) : '0.00'}% du CA total
               </span>
             </div>
 
@@ -265,7 +265,7 @@ export const AccountingTab: React.FC = () => {
             <div>
               <div className="flex justify-between font-semibold text-slate-800 mb-1">
                 <span>Ventes de Pièces & Consommables :</span>
-                <span className="font-mono tabular-nums font-bold">{totalPartsHT.toFixed(2)} €</span>
+                <span className="font-mono tabular-nums font-bold">{formatDecimal2(totalPartsHT)} €</span>
               </div>
               <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
                 <div
@@ -276,7 +276,7 @@ export const AccountingTab: React.FC = () => {
                 />
               </div>
               <span className="text-[10px] text-slate-400 mt-1 block">
-                {totalSalesHT > 0 ? ((totalPartsHT / totalSalesHT) * 100).toFixed(2) : '0.00'}% du CA total
+                {totalSalesHT > 0 ? formatDecimal2((totalPartsHT / totalSalesHT) * 100) : '0.00'}% du CA total
               </span>
             </div>
 
@@ -284,7 +284,7 @@ export const AccountingTab: React.FC = () => {
             <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
               <span className="font-semibold text-slate-700 block">Dépenses Fournisseurs engagées :</span>
               <p className="font-mono font-bold text-slate-900 text-sm tabular-nums">
-                {totalPurchasesHT.toFixed(2)} € HT ({totalPurchasesTTC.toFixed(2)} € TTC)
+                {formatDecimal2(totalPurchasesHT)} € HT ({formatDecimal2(totalPurchasesTTC)} € TTC)
               </p>
               <p className="text-[11px] text-slate-500">
                 Commandes passées auprès de AD, Michelin, Castrol et Würth.
@@ -336,7 +336,7 @@ export const AccountingTab: React.FC = () => {
                       }}
                     >
                       <span className="opacity-0 group-hover:opacity-100 absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] px-1.5 py-0.5 rounded pointer-events-none whitespace-nowrap z-10">
-                        {d.sales} €
+                        {formatDecimal2(d.sales)} €
                       </span>
                     </div>
 
@@ -346,7 +346,7 @@ export const AccountingTab: React.FC = () => {
                       style={{ height: `${purchHeight}%` }}
                     >
                       <span className="opacity-0 group-hover:opacity-100 absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-700 text-white text-[10px] px-1.5 py-0.5 rounded pointer-events-none whitespace-nowrap z-10">
-                        {d.purchases} €
+                        {formatDecimal2(d.purchases)} €
                       </span>
                     </div>
                   </div>
@@ -423,10 +423,10 @@ export const AccountingTab: React.FC = () => {
                         {inv.dueDate ? formatDate(inv.dueDate) : 'À réception'}
                       </td>
                       <td className="py-3 px-4 text-right font-mono text-slate-700 tabular-nums">
-                        {inv.totalTTC.toFixed(2)} €
+                        {formatDecimal2(inv.totalTTC)} €
                       </td>
                       <td className="py-3 px-4 text-right font-mono font-bold text-rose-600 tabular-nums text-sm">
-                        {remaining.toFixed(2)} €
+                        {formatDecimal2(remaining)} €
                       </td>
                       <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">

@@ -521,7 +521,7 @@ const INITIAL_DOCUMENTS: GarageDocument[] = [
     totalTTC: 117.5,
     amountPaid: 117.5,
     paymentMethod: 'carte',
-    notes: 'Règlement par CB au comptoir. Véhicule conforme.',
+    notes: '',
     mileageAtService: 124100,
   },
   {
@@ -702,7 +702,7 @@ const INITIAL_DOCUMENTS: GarageDocument[] = [
     totalTTC: 249.72,
     amountPaid: 249.72,
     paymentMethod: 'carte',
-    notes: 'Révision annuelle effectuée avec succès.',
+    notes: '',
     mileageAtService: 72150,
   },
   {
@@ -743,7 +743,7 @@ const INITIAL_DOCUMENTS: GarageDocument[] = [
     totalTTC: 305.04,
     amountPaid: 150.0,
     paymentMethod: 'virement',
-    notes: 'Acompte viré, solde de 155.04 € attendu sous quinzaine.',
+    notes: '',
     mileageAtService: 145000,
   },
 ];
@@ -1237,10 +1237,21 @@ export const storageService = {
   },
 };
 
-// Centime rounding helper (strictly 2 digits after decimal point)
+// Centime rounding helper (strictly 2 digits after decimal point, immune to IEEE-754 float drift like 1.005)
 export function roundCentimes(value: number): number {
   if (!Number.isFinite(value)) return 0;
-  return Math.round((value + Number.EPSILON) * 100) / 100;
+  const sign = value < 0 ? -1 : 1;
+  const abs = Math.abs(value);
+  const shifted = Math.round(Number(`${abs}e2`));
+  if (Number.isFinite(shifted)) {
+    return sign * Number(`${shifted}e-2`);
+  }
+  return sign * (Math.round((abs + 1e-9) * 100) / 100);
+}
+
+// Strict 2-decimal formatter (always 2 digits after the decimal point)
+export function formatDecimal2(value: number): string {
+  return roundCentimes(value).toFixed(2);
 }
 
 // Document calculation helper

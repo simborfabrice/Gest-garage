@@ -36,6 +36,7 @@ import { CashTransaction, CashDayClose } from '../../types';
 import { formatDate, formatDateLong, formatDateTime, formatDateFull } from '../../utils/dateUtils';
 import { printElement, downloadPrintableHtml } from '../../utils/printUtils';
 import { PriceInput } from '../PriceInput';
+import { roundCentimes, formatDecimal2 } from '../../services/storage';
 
 export const CashRegisterTab: React.FC = () => {
   const {
@@ -142,31 +143,43 @@ export const CashRegisterTab: React.FC = () => {
   );
 
   // Calculations for today
-  const totalCashIn = todayTransactions
-    .filter((tx) => tx.type !== 'retrait_caisse' && tx.paymentMethod === 'especes')
-    .reduce((sum, tx) => sum + tx.amount, 0);
+  const totalCashIn = roundCentimes(
+    todayTransactions
+      .filter((tx) => tx.type !== 'retrait_caisse' && tx.paymentMethod === 'especes')
+      .reduce((sum, tx) => sum + tx.amount, 0)
+  );
 
-  const totalCashOut = todayTransactions
-    .filter((tx) => tx.type === 'retrait_caisse')
-    .reduce((sum, tx) => sum + tx.amount, 0);
+  const totalCashOut = roundCentimes(
+    todayTransactions
+      .filter((tx) => tx.type === 'retrait_caisse')
+      .reduce((sum, tx) => sum + tx.amount, 0)
+  );
 
-  const currentCashInDrawer = totalCashIn - totalCashOut;
+  const currentCashInDrawer = roundCentimes(totalCashIn - totalCashOut);
 
-  const totalCardToday = todayTransactions
-    .filter((tx) => tx.paymentMethod === 'carte')
-    .reduce((sum, tx) => sum + tx.amount, 0);
+  const totalCardToday = roundCentimes(
+    todayTransactions
+      .filter((tx) => tx.paymentMethod === 'carte')
+      .reduce((sum, tx) => sum + tx.amount, 0)
+  );
 
-  const totalChequeToday = todayTransactions
-    .filter((tx) => tx.paymentMethod === 'cheque')
-    .reduce((sum, tx) => sum + tx.amount, 0);
+  const totalChequeToday = roundCentimes(
+    todayTransactions
+      .filter((tx) => tx.paymentMethod === 'cheque')
+      .reduce((sum, tx) => sum + tx.amount, 0)
+  );
 
-  const totalTransferToday = todayTransactions
-    .filter((tx) => tx.paymentMethod === 'virement')
-    .reduce((sum, tx) => sum + tx.amount, 0);
+  const totalTransferToday = roundCentimes(
+    todayTransactions
+      .filter((tx) => tx.paymentMethod === 'virement')
+      .reduce((sum, tx) => sum + tx.amount, 0)
+  );
 
-  const totalSalesTTC = todayTransactions
-    .filter((tx) => tx.type === 'encaissement_facture' || tx.type === 'vente_directe')
-    .reduce((sum, tx) => sum + tx.amount, 0);
+  const totalSalesTTC = roundCentimes(
+    todayTransactions
+      .filter((tx) => tx.type === 'encaissement_facture' || tx.type === 'vente_directe')
+      .reduce((sum, tx) => sum + tx.amount, 0)
+  );
 
   // Règlements journaliers (chiffre d'affaires encaissé du jour)
   const revenueSettlements = todayTransactions.filter(
@@ -178,11 +191,11 @@ export const CashRegisterTab: React.FC = () => {
   const chequeSettlements = revenueSettlements.filter((tx) => tx.paymentMethod === 'cheque');
   const transferSettlements = revenueSettlements.filter((tx) => tx.paymentMethod === 'virement');
 
-  const totalCardSettlements = cardSettlements.reduce((sum, tx) => sum + tx.amount, 0);
-  const totalCashSettlements = cashSettlements.reduce((sum, tx) => sum + tx.amount, 0);
-  const totalChequeSettlements = chequeSettlements.reduce((sum, tx) => sum + tx.amount, 0);
-  const totalTransferSettlements = transferSettlements.reduce((sum, tx) => sum + tx.amount, 0);
-  const grandTotalSettlements = revenueSettlements.reduce((sum, tx) => sum + tx.amount, 0);
+  const totalCardSettlements = roundCentimes(cardSettlements.reduce((sum, tx) => sum + tx.amount, 0));
+  const totalCashSettlements = roundCentimes(cashSettlements.reduce((sum, tx) => sum + tx.amount, 0));
+  const totalChequeSettlements = roundCentimes(chequeSettlements.reduce((sum, tx) => sum + tx.amount, 0));
+  const totalTransferSettlements = roundCentimes(transferSettlements.reduce((sum, tx) => sum + tx.amount, 0));
+  const grandTotalSettlements = roundCentimes(revenueSettlements.reduce((sum, tx) => sum + tx.amount, 0));
 
   const handleExportSettlementsCSV = () => {
     const headers = ['Date', 'Heure', 'Type', 'Mode de Règlement', 'Libellé', 'Client', 'Montant TTC (€)'];
@@ -199,7 +212,7 @@ export const CashRegisterTab: React.FC = () => {
         : 'Virement',
       `"${(tx.label || '').replace(/"/g, '""')}"`,
       `"${(tx.clientName || '').replace(/"/g, '""')}"`,
-      tx.amount.toFixed(2),
+      formatDecimal2(tx.amount),
     ]);
     const csvContent =
       'data:text/csv;charset=utf-8,\uFEFF' +
@@ -213,7 +226,7 @@ export const CashRegisterTab: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  const cashChangeToReturn = Math.max(0, cashGiven - checkoutAmount);
+  const cashChangeToReturn = roundCentimes(Math.max(0, cashGiven - checkoutAmount));
 
   const handleProcessCheckout = (e: React.FormEvent) => {
     e.preventDefault();
@@ -267,7 +280,7 @@ export const CashRegisterTab: React.FC = () => {
 
   const handleProcessDayClose = (e: React.FormEvent) => {
     e.preventDefault();
-    const discrepancy = actualCashCounted - currentCashInDrawer;
+    const discrepancy = roundCentimes(actualCashCounted - currentCashInDrawer);
 
     const newClose = addDayClose({
       date: todayDateStr,
@@ -329,7 +342,7 @@ export const CashRegisterTab: React.FC = () => {
     }
     if (cashSettings.confirmBeforeDelete ?? true) {
       const ok = confirm(
-        `Confirmer la suppression de cette ligne d'opération de caisse ?\n\n• Libellé : « ${tx.label} »\n• Montant : ${tx.amount.toFixed(2)} € (${tx.paymentMethod})\n\nLe solde du tiroir-caisse et les recettes du jour seront automatiquement recalculés.`
+        `Confirmer la suppression de cette ligne d'opération de caisse ?\n\n• Libellé : « ${tx.label} »\n• Montant : ${formatDecimal2(tx.amount)} € (${tx.paymentMethod})\n\nLe solde du tiroir-caisse et les recettes du jour seront automatiquement recalculés.`
       );
       if (!ok) return;
     }
@@ -384,20 +397,20 @@ export const CashRegisterTab: React.FC = () => {
     });
 
     setIsSettingsModalOpen(false);
-    setTxFeedback(`Paramètres de caisse enregistrés. Fond : ${newBal.toFixed(2)} € | Suppression de ligne : ${settingsEnableLineDeletion ? 'Activée' : 'Désactivée'}.`);
+    setTxFeedback(`Paramètres de caisse enregistrés. Fond : ${formatDecimal2(newBal)} € | Suppression de ligne : ${settingsEnableLineDeletion ? 'Activée' : 'Désactivée'}.`);
     setTimeout(() => setTxFeedback(null), 3500);
   };
 
   const handleClearDay = () => {
     if (
       confirm(
-        `Vider tout le journal des mouvements d'aujourd'hui ?\n\nLe fond de caisse initial d'ouverture (${settingsOpeningBalance} €) sera conservé pour démarrer une journée vierge.`
+        `Vider tout le journal des mouvements d'aujourd'hui ?\n\nLe fond de caisse initial d'ouverture (${formatDecimal2(settingsOpeningBalance)} €) sera conservé pour démarrer une journée vierge.`
       )
     ) {
       clearDayTransactions(true);
       setIsSettingsModalOpen(false);
       setSelectedTxIds([]);
-      setTxFeedback(`Journal du jour réinitialisé. Fond d’ouverture conservé : ${Number(settingsOpeningBalance).toFixed(2)} €.`);
+      setTxFeedback(`Journal du jour réinitialisé. Fond d’ouverture conservé : ${formatDecimal2(Number(settingsOpeningBalance))} €.`);
       setTimeout(() => setTxFeedback(null), 4000);
     }
   };
@@ -473,10 +486,10 @@ export const CashRegisterTab: React.FC = () => {
             Espèces en Tiroir Caisse
           </span>
           <p className="text-2xl font-black text-slate-900 tabular-nums">
-            {currentCashInDrawer.toFixed(2)} €
+            {formatDecimal2(currentCashInDrawer)} €
           </p>
           <span className="text-[10px] text-slate-400 block">
-            Entrées : +{totalCashIn.toFixed(2)} € · Sorties : -{totalCashOut.toFixed(2)} €
+            Entrées : +{formatDecimal2(totalCashIn)} € · Sorties : -{formatDecimal2(totalCashOut)} €
           </span>
         </div>
 
@@ -486,7 +499,7 @@ export const CashRegisterTab: React.FC = () => {
             Carte Bancaire (TPE)
           </span>
           <p className="text-2xl font-black text-blue-600 tabular-nums">
-            {totalCardToday.toFixed(2)} €
+            {formatDecimal2(totalCardToday)} €
           </p>
           <span className="text-[10px] text-slate-400 block">Télécollecte bancaire auto</span>
         </div>
@@ -497,7 +510,7 @@ export const CashRegisterTab: React.FC = () => {
             Chèques Reçus
           </span>
           <p className="text-2xl font-black text-amber-600 tabular-nums">
-            {totalChequeToday.toFixed(2)} €
+            {formatDecimal2(totalChequeToday)} €
           </p>
           <span className="text-[10px] text-slate-400 block">À déposer en banque</span>
         </div>
@@ -508,7 +521,7 @@ export const CashRegisterTab: React.FC = () => {
             Virements Bancaires
           </span>
           <p className="text-2xl font-black text-purple-600 tabular-nums">
-            {totalTransferToday.toFixed(2)} €
+            {formatDecimal2(totalTransferToday)} €
           </p>
           <span className="text-[10px] text-slate-400 block">Comptes professionnels</span>
         </div>
@@ -522,7 +535,7 @@ export const CashRegisterTab: React.FC = () => {
             Total Recettes Jour TTC
           </span>
           <p className="text-2xl font-black tabular-nums">
-            {totalSalesTTC.toFixed(2)} €
+            {formatDecimal2(totalSalesTTC)} €
           </p>
           <span className="text-[10px] opacity-75 block">30 Septembre 2026</span>
         </div>
@@ -786,7 +799,7 @@ export const CashRegisterTab: React.FC = () => {
                             }`}
                           >
                             {isOut ? '-' : '+'}
-                            {tx.amount.toFixed(2)} €
+                            {formatDecimal2(tx.amount)} €
                           </td>
 
                           <td className="py-3 px-4 text-center">
@@ -931,7 +944,7 @@ export const CashRegisterTab: React.FC = () => {
               <CreditCard className="w-4 h-4" />
             </div>
             <p className="text-lg font-black font-mono text-slate-900 tabular-nums">
-              {totalCardSettlements.toFixed(2)} €
+              {formatDecimal2(totalCardSettlements)} €
             </p>
             <p className="text-[11px] text-slate-500 mt-0.5">
               {cardSettlements.length} règlement{cardSettlements.length > 1 ? 's' : ''}
@@ -952,7 +965,7 @@ export const CashRegisterTab: React.FC = () => {
               <Banknote className="w-4 h-4" />
             </div>
             <p className="text-lg font-black font-mono text-slate-900 tabular-nums">
-              {totalCashSettlements.toFixed(2)} €
+              {formatDecimal2(totalCashSettlements)} €
             </p>
             <p className="text-[11px] text-slate-500 mt-0.5">
               {cashSettlements.length} règlement{cashSettlements.length > 1 ? 's' : ''}
@@ -973,7 +986,7 @@ export const CashRegisterTab: React.FC = () => {
               <FileText className="w-4 h-4" />
             </div>
             <p className="text-lg font-black font-mono text-slate-900 tabular-nums">
-              {totalChequeSettlements.toFixed(2)} €
+              {formatDecimal2(totalChequeSettlements)} €
             </p>
             <p className="text-[11px] text-slate-500 mt-0.5">
               {chequeSettlements.length} chèque{chequeSettlements.length > 1 ? 's' : ''}
@@ -994,7 +1007,7 @@ export const CashRegisterTab: React.FC = () => {
               <ArrowRightLeft className="w-4 h-4" />
             </div>
             <p className="text-lg font-black font-mono text-slate-900 tabular-nums">
-              {totalTransferSettlements.toFixed(2)} €
+              {formatDecimal2(totalTransferSettlements)} €
             </p>
             <p className="text-[11px] text-slate-500 mt-0.5">
               {transferSettlements.length} virement{transferSettlements.length > 1 ? 's' : ''}
@@ -1008,7 +1021,7 @@ export const CashRegisterTab: React.FC = () => {
               <Wallet className="w-4 h-4 text-emerald-400" />
             </div>
             <p className="text-lg font-black font-mono text-white tabular-nums">
-              {grandTotalSettlements.toFixed(2)} €
+              {formatDecimal2(grandTotalSettlements)} €
             </p>
             <p className="text-[11px] text-slate-300 mt-0.5">
               {revenueSettlements.length} règlement{revenueSettlements.length > 1 ? 's' : ''} TTC
@@ -1166,7 +1179,7 @@ export const CashRegisterTab: React.FC = () => {
                           </td>
 
                           <td className="py-3 px-4 text-right font-mono font-black text-sm text-slate-900 tabular-nums">
-                            {tx.amount.toFixed(2)} €
+                            {formatDecimal2(tx.amount)} €
                           </td>
 
                           <td className="py-3 px-4 text-center">
@@ -1273,7 +1286,7 @@ export const CashRegisterTab: React.FC = () => {
                     >
                       {unpaidInvoices.map((inv) => (
                         <option key={inv.id} value={inv.id}>
-                          {inv.referenceNumber} — Reste à régler : {(inv.totalTTC - inv.amountPaid).toFixed(2)} € TTC
+                          {inv.referenceNumber} — Reste à régler : {formatDecimal2(inv.totalTTC - inv.amountPaid)} € TTC
                         </option>
                       ))}
                     </select>
@@ -1385,7 +1398,7 @@ export const CashRegisterTab: React.FC = () => {
                   <div className="flex items-center justify-between text-sm font-bold text-emerald-900 pt-1 border-t border-emerald-200">
                     <span>Monnaie à rendre :</span>
                     <span className="font-mono text-base tabular-nums">
-                      {cashChangeToReturn.toFixed(2)} €
+                      {formatDecimal2(cashChangeToReturn)} €
                     </span>
                   </div>
                 </div>
@@ -1518,15 +1531,15 @@ export const CashRegisterTab: React.FC = () => {
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
                 <div className="flex justify-between text-slate-600">
                   <span>Solde théorique en caisse (Espèces) :</span>
-                  <span className="font-mono font-bold text-slate-900">{currentCashInDrawer.toFixed(2)} €</span>
+                  <span className="font-mono font-bold text-slate-900">{formatDecimal2(currentCashInDrawer)} €</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
                   <span>Total Cartes Bancaires (TPE) :</span>
-                  <span className="font-mono font-bold text-blue-700">{totalCardToday.toFixed(2)} €</span>
+                  <span className="font-mono font-bold text-blue-700">{formatDecimal2(totalCardToday)} €</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
                   <span>Chiffre d’affaires TTC du jour :</span>
-                  <span className="font-mono font-bold text-slate-900">{totalSalesTTC.toFixed(2)} €</span>
+                  <span className="font-mono font-bold text-slate-900">{formatDecimal2(totalSalesTTC)} €</span>
                 </div>
               </div>
 
@@ -1542,13 +1555,13 @@ export const CashRegisterTab: React.FC = () => {
                 />
               </div>
 
-              {actualCashCounted !== currentCashInDrawer && (
+              {roundCentimes(actualCashCounted - currentCashInDrawer) !== 0 && (
                 <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-amber-900 flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
                   <span>
                     Écart de caisse détecté :{' '}
                     <strong className="font-mono">
-                      {(actualCashCounted - currentCashInDrawer).toFixed(2)} €
+                      {formatDecimal2(actualCashCounted - currentCashInDrawer)} €
                     </strong>
                   </span>
                 </div>
@@ -1641,14 +1654,14 @@ export const CashRegisterTab: React.FC = () => {
               <div className="py-2 bg-slate-100 rounded text-center">
                 <span className="text-[11px] text-slate-500 block">TOTAL PAYÉ</span>
                 <span className="text-lg font-black text-slate-900 tabular-nums">
-                  {printedReceipt.amount.toFixed(2)} € TTC
+                  {formatDecimal2(printedReceipt.amount)} € TTC
                 </span>
               </div>
 
               {printedReceipt.cashReceived && (
                 <div className="text-left text-[11px] text-slate-600 space-y-0.5">
-                  <p>Espèces remises : {printedReceipt.cashReceived.toFixed(2)} €</p>
-                  <p>Monnaie rendue : {(printedReceipt.cashChange || 0).toFixed(2)} €</p>
+                  <p>Espèces remises : {formatDecimal2(printedReceipt.cashReceived)} €</p>
+                  <p>Monnaie rendue : {formatDecimal2(printedReceipt.cashChange || 0)} €</p>
                 </div>
               )}
 
@@ -1718,39 +1731,39 @@ export const CashRegisterTab: React.FC = () => {
               <div className="space-y-2">
                 <div className="flex justify-between font-bold text-slate-900 text-sm">
                   <span>CHIFFRE D’AFFAIRES TOTAL :</span>
-                  <span className="font-mono tabular-nums">{printedZClose.totalSalesTTC.toFixed(2)} € TTC</span>
+                  <span className="font-mono tabular-nums">{formatDecimal2(printedZClose.totalSalesTTC)} € TTC</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
                   <span>Total Cartes Bancaires :</span>
-                  <span className="font-mono tabular-nums">{printedZClose.totalCard.toFixed(2)} €</span>
+                  <span className="font-mono tabular-nums">{formatDecimal2(printedZClose.totalCard)} €</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
                   <span>Total Espèces encaissées :</span>
-                  <span className="font-mono tabular-nums">{printedZClose.totalCash.toFixed(2)} €</span>
+                  <span className="font-mono tabular-nums">{formatDecimal2(printedZClose.totalCash)} €</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
                   <span>Total Chèques :</span>
-                  <span className="font-mono tabular-nums">{printedZClose.totalCheque.toFixed(2)} €</span>
+                  <span className="font-mono tabular-nums">{formatDecimal2(printedZClose.totalCheque)} €</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
                   <span>Total Virements :</span>
-                  <span className="font-mono tabular-nums">{printedZClose.totalTransfer.toFixed(2)} €</span>
+                  <span className="font-mono tabular-nums">{formatDecimal2(printedZClose.totalTransfer)} €</span>
                 </div>
               </div>
 
               <div className="p-3 bg-slate-50 rounded border border-slate-200 space-y-1">
                 <div className="flex justify-between font-semibold text-slate-800">
                   <span>Espèces théoriques en caisse :</span>
-                  <span className="font-mono tabular-nums">{printedZClose.theoreticalCashInDrawer.toFixed(2)} €</span>
+                  <span className="font-mono tabular-nums">{formatDecimal2(printedZClose.theoreticalCashInDrawer)} €</span>
                 </div>
                 <div className="flex justify-between font-bold text-slate-900">
                   <span>Espèces réelles comptées :</span>
-                  <span className="font-mono tabular-nums">{printedZClose.actualCashCounted.toFixed(2)} €</span>
+                  <span className="font-mono tabular-nums">{formatDecimal2(printedZClose.actualCashCounted)} €</span>
                 </div>
                 <div className="flex justify-between font-bold text-xs pt-1 border-t border-slate-200">
                   <span>Écart de caisse :</span>
                   <span className={`font-mono tabular-nums ${printedZClose.discrepancy === 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
-                    {printedZClose.discrepancy >= 0 ? '+' : ''}{printedZClose.discrepancy.toFixed(2)} €
+                    {printedZClose.discrepancy >= 0 ? '+' : ''}{formatDecimal2(printedZClose.discrepancy)} €
                   </span>
                 </div>
               </div>
@@ -2083,7 +2096,7 @@ export const CashRegisterTab: React.FC = () => {
                 <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
                   <span className="text-[10px] uppercase font-bold text-slate-500 block">Carte Bleue</span>
                   <span className="text-sm font-black font-mono text-slate-900 block mt-0.5">
-                    {totalCardSettlements.toFixed(2)} €
+                    {formatDecimal2(totalCardSettlements)} €
                   </span>
                   <span className="text-[10px] text-slate-400">{cardSettlements.length} op.</span>
                 </div>
@@ -2091,7 +2104,7 @@ export const CashRegisterTab: React.FC = () => {
                 <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
                   <span className="text-[10px] uppercase font-bold text-slate-500 block">Espèces</span>
                   <span className="text-sm font-black font-mono text-slate-900 block mt-0.5">
-                    {totalCashSettlements.toFixed(2)} €
+                    {formatDecimal2(totalCashSettlements)} €
                   </span>
                   <span className="text-[10px] text-slate-400">{cashSettlements.length} op.</span>
                 </div>
@@ -2099,7 +2112,7 @@ export const CashRegisterTab: React.FC = () => {
                 <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
                   <span className="text-[10px] uppercase font-bold text-slate-500 block">Chèques</span>
                   <span className="text-sm font-black font-mono text-slate-900 block mt-0.5">
-                    {totalChequeSettlements.toFixed(2)} €
+                    {formatDecimal2(totalChequeSettlements)} €
                   </span>
                   <span className="text-[10px] text-slate-400">{chequeSettlements.length} op.</span>
                 </div>
@@ -2107,7 +2120,7 @@ export const CashRegisterTab: React.FC = () => {
                 <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
                   <span className="text-[10px] uppercase font-bold text-slate-500 block">Virements</span>
                   <span className="text-sm font-black font-mono text-slate-900 block mt-0.5">
-                    {totalTransferSettlements.toFixed(2)} €
+                    {formatDecimal2(totalTransferSettlements)} €
                   </span>
                   <span className="text-[10px] text-slate-400">{transferSettlements.length} op.</span>
                 </div>
@@ -2125,7 +2138,7 @@ export const CashRegisterTab: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <span className="text-xl font-black font-mono tracking-tight tabular-nums">
-                    {grandTotalSettlements.toFixed(2)} € TTC
+                    {formatDecimal2(grandTotalSettlements)} € TTC
                   </span>
                 </div>
               </div>
@@ -2173,7 +2186,7 @@ export const CashRegisterTab: React.FC = () => {
                           <td className="py-2 px-2.5 font-medium">{tx.label}</td>
                           <td className="py-2 px-2.5 text-slate-600">{tx.clientName || 'Comptoir'}</td>
                           <td className="py-2 px-2.5 text-right font-mono font-bold">
-                            {tx.amount.toFixed(2)} €
+                            {formatDecimal2(tx.amount)} €
                           </td>
                         </tr>
                       ))
