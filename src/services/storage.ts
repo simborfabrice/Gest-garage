@@ -1242,6 +1242,9 @@ export function roundCentimes(value: number): number {
   if (!Number.isFinite(value)) return 0;
   const sign = value < 0 ? -1 : 1;
   const abs = Math.abs(value);
+  if (abs > 0 && abs < 1e-4) {
+    return 0;
+  }
   const shifted = Math.round(Number(`${abs}e2`));
   if (Number.isFinite(shifted)) {
     return sign * Number(`${shifted}e-2`);
@@ -1254,9 +1257,53 @@ export function formatDecimal2(value: number): string {
   return roundCentimes(value).toFixed(2);
 }
 
+// Per-line calculation helper that preserves exact round TTC sums when entered in TTC
+export function computeDocumentItemTotals(item: {
+  quantity: number;
+  unitPriceHT: number;
+  unitPriceTTC?: number;
+  discountPercent?: number;
+  tvaRate?: number;
+}): {
+  qty: number;
+  unitHT: number;
+  unitTTC: number;
+  lineHT: number;
+  lineTVA: number;
+  lineTTC: number;
+  rate: number;
+  discount: number;
+} {
+  const qty = roundCentimes(item.quantity || 0);
+  const discount = item.discountPercent || 0;
+  const rate = item.tvaRate ?? 20;
+  const unitHT = roundCentimes(item.unitPriceHT || 0);
+
+  if (item.unitPriceTTC !== undefined && Number.isFinite(item.unitPriceTTC)) {
+    const unitTTC = roundCentimes(item.unitPriceTTC);
+    const lineTTC = roundCentimes(qty * unitTTC * (1 - discount / 100));
+    const lineHT = roundCentimes(lineTTC / (1 + rate / 100));
+    const lineTVA = roundCentimes(lineTTC - lineHT);
+    return { qty, unitHT, unitTTC, lineHT, lineTVA, lineTTC, rate, discount };
+  }
+
+  const lineHT = roundCentimes(qty * unitHT * (1 - discount / 100));
+  const lineTVA = roundCentimes(lineHT * (rate / 100));
+  const lineTTC = roundCentimes(lineHT + lineTVA);
+  const unitTTC = roundCentimes(unitHT * (1 + rate / 100));
+  return { qty, unitHT, unitTTC, lineHT, lineTVA, lineTTC, rate, discount };
+}
+
 // Document calculation helper
 export function recalculateDocumentTotals(
-  items: GarageDocument['items']
+  items: Array<{
+    type: GarageDocument['items'][number]['type'];
+    quantity: number;
+    unitPriceHT: number;
+    unitPriceTTC?: number;
+    discountPercent?: number;
+    tvaRate?: number;
+  }>
 ): {
   totalPartsHT: number;
   totalLaborHT: number;
@@ -1270,13 +1317,7 @@ export function recalculateDocumentTotals(
   let totalTVA = 0;
 
   for (const item of items) {
-    const qty = roundCentimes(item.quantity || 0);
-    const unitHT = roundCentimes(item.unitPriceHT || 0);
-    const discount = item.discountPercent || 0;
-    const rate = item.tvaRate ?? 20;
-
-    const lineHT = roundCentimes(qty * unitHT * (1 - discount / 100));
-    const lineTVA = roundCentimes(lineHT * (rate / 100));
+    const { lineHT, lineTVA } = computeDocumentItemTotals(item);
 
     totalHT = roundCentimes(totalHT + lineHT);
     totalTVA = roundCentimes(totalTVA + lineTVA);
@@ -1298,3 +1339,71 @@ export function recalculateDocumentTotals(
     totalTTC,
   };
 }
+
+// Adjusts items so totalTTC reaches the nearest round euro sum (.00 €)
+export function roundDocumentItemsToWholeEuro<
+  T extends {
+    type: GarageDocument['items'][number]['type'];
+    reference: string;
+    description: string;
+    quantity: number;
+    unitPriceHT: number;
+    unitPriceTTC?: number;
+    discountPercent: number;
+    tvaRate: number;
+  }
+>(items: T[]): T[] {
+  if (items.length === 0) return items;
+
+  const totals = recalculateDocumentTotals(items);
+  const targetTotalTTC = Math.round(totals.totalTTC);
+  const diff = roundCentimes(targetTotalTTC - totals.totalTTC);
+  if (diff === 0) return items;
+
+  // Prefer the last unit-quantity item without discount so we hit the exact round sum cleanly
+  let targetIdx = -1;
+  for (let i = items.length - 1; i >= 0; i--) {
+    const it = items[i];
+    if (roundCentimes(it.quantity) === 1 && (it.discountPercent || 0) === 0) {
+      const currentLineTTC = computeDocumentItemTotals(it).lineTTC;
+      if (roundCentimes(currentLineTTC + diff) >= 0) {
+        targetIdx = i;
+        break;
+      }
+    }
+  }
+
+  if (targetIdx !== -1) {
+    const updated = items.map((it) => ({ ...it }));
+    const target = updated[targetIdx];
+    const current = computeDocumentItemTotals(target);
+    const newUnitTTC = roundCentimes(current.lineTTC + diff);
+    const newUnitHT = roundCentimes(newUnitTTC / (1 + (target.tvaRate ?? 20) / 100));
+    target.unitPriceTTC = newUnitTTC;
+    target.unitPriceHT = newUnitHT;
+    return updated;
+  }
+
+  // Fallback: try adjusting the last item if divisible cleanly
+  for (let i = items.length - 1; i >= 0; i--) {
+    const it = items[i];
+    const qty = roundCentimes(it.quantity);
+    const factor = qty * (1 - (it.discountPercent || 0) / 100);
+    if (factor > 0) {
+      const current = computeDocumentItemTotals(it);
+      const newLineTTC = roundCentimes(current.lineTTC + diff);
+      if (newLineTTC >= 0) {
+        const candidateUnitTTC = roundCentimes(newLineTTC / factor);
+        if (roundCentimes(candidateUnitTTC * factor) === newLineTTC) {
+          const updated = items.map((item) => ({ ...item }));
+          updated[i].unitPriceTTC = candidateUnitTTC;
+          updated[i].unitPriceHT = roundCentimes(candidateUnitTTC / (1 + (it.tvaRate ?? 20) / 100));
+          return updated;
+        }
+      }
+    }
+  }
+
+  return items;
+}
+

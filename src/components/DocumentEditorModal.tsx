@@ -17,7 +17,13 @@ import {
   Search,
 } from 'lucide-react';
 import { CatalogItem, DocumentItem, DocumentStatus, DocumentType, GarageDocument, Vehicle, Client } from '../types';
-import { recalculateDocumentTotals, roundCentimes, formatDecimal2 } from '../services/storage';
+import {
+  recalculateDocumentTotals,
+  roundCentimes,
+  formatDecimal2,
+  computeDocumentItemTotals,
+  roundDocumentItemsToWholeEuro,
+} from '../services/storage';
 import { CatalogShortcutsModal } from './CatalogShortcutsModal';
 import { PriceInput } from './PriceInput';
 
@@ -838,11 +844,7 @@ export const DocumentEditorModal: React.FC = () => {
                 </div>
               ) : (
                 items.map((it, idx) => {
-                  const lineDiscounted = roundCentimes(
-                    roundCentimes(it.quantity) * roundCentimes(it.unitPriceHT) * (1 - (it.discountPercent || 0) / 100)
-                  );
-                  const lineTVA = roundCentimes(lineDiscounted * ((it.tvaRate ?? 20) / 100));
-                  const lineTTC = roundCentimes(lineDiscounted + lineTVA);
+                  const { unitTTC, lineHT: lineDiscounted, lineTTC } = computeDocumentItemTotals(it);
 
                   return (
                   <div
@@ -904,7 +906,11 @@ export const DocumentEditorModal: React.FC = () => {
                             value={it.unitPriceHT}
                             onChange={(val) => {
                               const updated = [...items];
-                              updated[idx].unitPriceHT = val;
+                              updated[idx] = {
+                                ...updated[idx],
+                                unitPriceHT: val,
+                                unitPriceTTC: undefined,
+                              };
                               setItems(updated);
                             }}
                             className="w-24 border border-slate-300 rounded-lg p-1 text-xs text-right tabular-nums font-mono font-bold text-slate-900 bg-white"
@@ -915,12 +921,16 @@ export const DocumentEditorModal: React.FC = () => {
                         <div className="flex items-center gap-1">
                           <span className="text-[11px] text-sky-800 font-semibold">P.U. TTC :</span>
                           <PriceInput
-                            value={roundCentimes(it.unitPriceHT * (1 + (it.tvaRate ?? 20) / 100))}
+                            value={unitTTC}
                             onChange={(ttc) => {
                               const rate = it.tvaRate ?? 20;
                               const ht = roundCentimes(ttc / (1 + rate / 100));
                               const updated = [...items];
-                              updated[idx].unitPriceHT = ht;
+                              updated[idx] = {
+                                ...updated[idx],
+                                unitPriceTTC: roundCentimes(ttc),
+                                unitPriceHT: ht,
+                              };
                               setItems(updated);
                             }}
                             allowEmptyZero
@@ -938,7 +948,7 @@ export const DocumentEditorModal: React.FC = () => {
                             value={it.discountPercent || 0}
                             onChange={(val) => {
                               const updated = [...items];
-                              updated[idx].discountPercent = val;
+                              updated[idx] = { ...updated[idx], discountPercent: val };
                               setItems(updated);
                             }}
                             className="w-16 border border-slate-300 rounded-lg p-1 text-xs text-right tabular-nums bg-white font-mono"
@@ -951,8 +961,16 @@ export const DocumentEditorModal: React.FC = () => {
                           <select
                             value={it.tvaRate}
                             onChange={(e) => {
+                              const newRate = Number(e.target.value);
                               const updated = [...items];
-                              updated[idx].tvaRate = Number(e.target.value);
+                              const currentItem = updated[idx];
+                              updated[idx] = {
+                                ...currentItem,
+                                tvaRate: newRate,
+                                ...(currentItem.unitPriceTTC !== undefined
+                                  ? { unitPriceHT: roundCentimes(currentItem.unitPriceTTC / (1 + newRate / 100)) }
+                                  : {}),
+                              };
                               setItems(updated);
                             }}
                             className="w-22 border border-slate-300 rounded-lg p-1 text-xs bg-white font-mono font-medium"
@@ -1048,9 +1066,19 @@ export const DocumentEditorModal: React.FC = () => {
               <span className="text-[10px] text-emerald-400 uppercase tracking-wider block font-bold">
                 Total TTC Net
               </span>
-              <span className="text-base font-mono font-black text-emerald-400">
+              <span className="text-base font-mono font-black text-emerald-400 block">
                 {formatDecimal2(liveTotals.totalTTC)} €
               </span>
+              {items.length > 0 && roundCentimes(liveTotals.totalTTC) !== roundCentimes(Math.round(liveTotals.totalTTC)) && (
+                <button
+                  type="button"
+                  onClick={() => setItems(roundDocumentItemsToWholeEuro(items))}
+                  className="mt-1 px-2 py-0.5 text-[10px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded transition-colors"
+                  title="Arrondir le total TTC à la somme ronde la plus proche"
+                >
+                  Arrondir à {formatDecimal2(Math.round(liveTotals.totalTTC))} €
+                </button>
+              )}
             </div>
           </div>
         </div>

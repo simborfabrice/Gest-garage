@@ -389,6 +389,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...it,
       quantity: roundCentimes(it.quantity || 0),
       unitPriceHT: roundCentimes(it.unitPriceHT || 0),
+      ...(it.unitPriceTTC !== undefined ? { unitPriceTTC: roundCentimes(it.unitPriceTTC) } : {}),
       tvaRate: roundCentimes(it.tvaRate ?? 20),
     }));
 

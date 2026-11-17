@@ -27,7 +27,13 @@ import { CatalogItem, DocumentItem, DocumentType, GarageDocument, Vehicle, Clien
 import { CatalogShortcutsModal } from '../CatalogShortcutsModal';
 import { PriceInput } from '../PriceInput';
 import { formatDate } from '../../utils/dateUtils';
-import { recalculateDocumentTotals, roundCentimes, formatDecimal2 } from '../../services/storage';
+import {
+  recalculateDocumentTotals,
+  roundCentimes,
+  formatDecimal2,
+  computeDocumentItemTotals,
+  roundDocumentItemsToWholeEuro,
+} from '../../services/storage';
 
 export const DocumentsTab: React.FC = () => {
   const {
@@ -1311,7 +1317,11 @@ export const DocumentsTab: React.FC = () => {
                                 value={it.unitPriceHT}
                                 onChange={(val) => {
                                   const updated = [...items];
-                                  updated[idx].unitPriceHT = val;
+                                  updated[idx] = {
+                                    ...updated[idx],
+                                    unitPriceHT: val,
+                                    unitPriceTTC: undefined,
+                                  };
                                   setItems(updated);
                                 }}
                                 className="w-20 border border-slate-300 rounded p-1 text-xs text-right tabular-nums font-mono font-bold text-slate-900 bg-white"
@@ -1322,12 +1332,16 @@ export const DocumentsTab: React.FC = () => {
                             <div className="flex items-center gap-1">
                               <span className="text-[11px] text-sky-800 font-semibold">P.U. TTC :</span>
                               <PriceInput
-                                value={roundCentimes(it.unitPriceHT * (1 + (it.tvaRate ?? 20) / 100))}
+                                value={computeDocumentItemTotals(it).unitTTC}
                                 onChange={(ttc) => {
                                   const rate = it.tvaRate ?? 20;
                                   const ht = roundCentimes(ttc / (1 + rate / 100));
                                   const updated = [...items];
-                                  updated[idx].unitPriceHT = ht;
+                                  updated[idx] = {
+                                    ...updated[idx],
+                                    unitPriceTTC: roundCentimes(ttc),
+                                    unitPriceHT: ht,
+                                  };
                                   setItems(updated);
                                 }}
                                 allowEmptyZero
@@ -1342,8 +1356,16 @@ export const DocumentsTab: React.FC = () => {
                               <select
                                 value={it.tvaRate}
                                 onChange={(e) => {
+                                  const newRate = Number(e.target.value);
                                   const updated = [...items];
-                                  updated[idx].tvaRate = Number(e.target.value);
+                                  const currentItem = updated[idx];
+                                  updated[idx] = {
+                                    ...currentItem,
+                                    tvaRate: newRate,
+                                    ...(currentItem.unitPriceTTC !== undefined
+                                      ? { unitPriceHT: roundCentimes(currentItem.unitPriceTTC / (1 + newRate / 100)) }
+                                      : {}),
+                                  };
                                   setItems(updated);
                                 }}
                                 className="w-20 border border-slate-300 rounded p-1 text-xs bg-white font-mono"
@@ -1357,9 +1379,7 @@ export const DocumentsTab: React.FC = () => {
 
                             <div className="flex items-center gap-2 pl-2 text-[11px] font-mono">
                               {(() => {
-                                const lineHT = roundCentimes(roundCentimes(it.quantity) * roundCentimes(it.unitPriceHT));
-                                const lineTVA = roundCentimes(lineHT * ((it.tvaRate ?? 20) / 100));
-                                const lineTTC = roundCentimes(lineHT + lineTVA);
+                                const { lineHT, lineTTC } = computeDocumentItemTotals(it);
                                 return (
                                   <>
                                     <span className="text-slate-600">
@@ -1411,11 +1431,23 @@ export const DocumentsTab: React.FC = () => {
                             {formatDecimal2(summaryTotals.totalTVA)} €
                           </span>
                         </div>
-                        <div className="px-2.5 py-1 bg-white rounded border border-slate-300 shadow-2xs">
-                          <span className="text-slate-700 text-[11px] font-bold">TOTAL TTC : </span>
-                          <strong className="text-emerald-700 text-sm font-black">
-                            {formatDecimal2(summaryTotals.totalTTC)} €
-                          </strong>
+                        <div className="px-2.5 py-1 bg-white rounded border border-slate-300 shadow-2xs flex items-center gap-2">
+                          <div>
+                            <span className="text-slate-700 text-[11px] font-bold">TOTAL TTC : </span>
+                            <strong className="text-emerald-700 text-sm font-black">
+                              {formatDecimal2(summaryTotals.totalTTC)} €
+                            </strong>
+                          </div>
+                          {roundCentimes(summaryTotals.totalTTC) !== roundCentimes(Math.round(summaryTotals.totalTTC)) && (
+                            <button
+                              type="button"
+                              onClick={() => setItems(roundDocumentItemsToWholeEuro(items))}
+                              className="px-2 py-0.5 text-[10px] font-sans font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded transition-colors"
+                              title="Arrondir le total TTC à la somme ronde la plus proche"
+                            >
+                              Arrondir à {formatDecimal2(Math.round(summaryTotals.totalTTC))} €
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

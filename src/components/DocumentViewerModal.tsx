@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { formatDate } from '../utils/dateUtils';
 import { printElement, downloadPrintableHtml } from '../utils/printUtils';
-import { roundCentimes, formatDecimal2 } from '../services/storage';
+import { roundCentimes, formatDecimal2, computeDocumentItemTotals } from '../services/storage';
 
 type ViewLayoutMode = 'official_standard' | 'official_compact' | 'workshop_card' | 'handover';
 
@@ -237,11 +237,7 @@ export const DocumentViewerModal: React.FC = () => {
   const vatBreakdown: { [rate: number]: { baseHT: number; amountTVA: number } } = {};
   if (doc) {
     doc.items.forEach((it) => {
-      const qty = roundCentimes(it.quantity || 0);
-      const unitHT = roundCentimes(it.unitPriceHT || 0);
-      const lineHT = roundCentimes(qty * unitHT * (1 - (it.discountPercent || 0) / 100));
-      const rate = it.tvaRate ?? 20;
-      const lineTVA = roundCentimes(lineHT * (rate / 100));
+      const { lineHT, lineTVA, rate } = computeDocumentItemTotals(it);
       if (!vatBreakdown[rate]) {
         vatBreakdown[rate] = { baseHT: 0, amountTVA: 0 };
       }
@@ -254,52 +250,19 @@ export const DocumentViewerModal: React.FC = () => {
   const partsSubtotalHT = doc
     ? doc.items
         .filter((it) => it.type === 'piece')
-        .reduce(
-          (sum, it) =>
-            roundCentimes(
-              sum +
-                roundCentimes(
-                  roundCentimes(it.quantity || 0) *
-                    roundCentimes(it.unitPriceHT || 0) *
-                    (1 - (it.discountPercent || 0) / 100)
-                )
-            ),
-          0
-        )
+        .reduce((sum, it) => roundCentimes(sum + computeDocumentItemTotals(it).lineHT), 0)
     : 0;
 
   const laborSubtotalHT = doc
     ? doc.items
         .filter((it) => it.type === 'main_oeuvre')
-        .reduce(
-          (sum, it) =>
-            roundCentimes(
-              sum +
-                roundCentimes(
-                  roundCentimes(it.quantity || 0) *
-                    roundCentimes(it.unitPriceHT || 0) *
-                    (1 - (it.discountPercent || 0) / 100)
-                )
-            ),
-          0
-        )
+        .reduce((sum, it) => roundCentimes(sum + computeDocumentItemTotals(it).lineHT), 0)
     : 0;
 
   const otherSubtotalHT = doc
     ? doc.items
         .filter((it) => it.type === 'forfait' || it.type === 'autre')
-        .reduce(
-          (sum, it) =>
-            roundCentimes(
-              sum +
-                roundCentimes(
-                  roundCentimes(it.quantity || 0) *
-                    roundCentimes(it.unitPriceHT || 0) *
-                    (1 - (it.discountPercent || 0) / 100)
-                )
-            ),
-          0
-        )
+        .reduce((sum, it) => roundCentimes(sum + computeDocumentItemTotals(it).lineHT), 0)
     : 0;
 
   return (
@@ -937,13 +900,7 @@ export const DocumentViewerModal: React.FC = () => {
                           </tr>
                         ) : (
                           doc.items.map((it, idx) => {
-                            const qty = roundCentimes(it.quantity || 0);
-                            const unitHT = roundCentimes(it.unitPriceHT || 0);
-                            const discount = it.discountPercent || 0;
-                            const lineHT = roundCentimes(qty * unitHT * (1 - discount / 100));
-                            const rate = it.tvaRate ?? 20;
-                            const lineTVA = roundCentimes(lineHT * (rate / 100));
-                            const lineTTC = roundCentimes(lineHT + lineTVA);
+                            const { qty, unitHT, discount, lineHT, rate, lineTTC } = computeDocumentItemTotals(it);
 
                             return (
                             <tr
@@ -1432,7 +1389,7 @@ export const DocumentViewerModal: React.FC = () => {
                           <td className="py-2 px-2 text-right font-mono text-slate-700">{formatDecimal2(it.unitCostHT)} €</td>
                           <td className="py-2 px-2 text-right font-mono text-slate-500">{formatDecimal2(it.tvaRate)}%</td>
                           <td className="py-2 px-2.5 text-right font-mono font-bold text-slate-900">
-                            {formatDecimal2(roundCentimes(it.quantity) * roundCentimes(it.unitCostHT))} €
+                            {formatDecimal2(roundCentimes(roundCentimes(it.quantity) * roundCentimes(it.unitCostHT)))} €
                           </td>
                         </tr>
                       ))}

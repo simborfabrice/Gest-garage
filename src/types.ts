@@ -161,6 +161,7 @@ export interface DocumentItem {
   description: string;
   quantity: number;
   unitPriceHT: number;
+  unitPriceTTC?: number;
   discountPercent: number;
   tvaRate: number; // 20, 10, 5.5, 0
 }
